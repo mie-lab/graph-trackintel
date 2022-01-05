@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# project specific
+*.code-workspace
+dblogin.json
+.DS_Store
+tests/output_test_plots
+
 # C extensions
 *.so
 
