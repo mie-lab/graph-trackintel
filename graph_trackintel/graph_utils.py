@@ -6,125 +6,10 @@ Created on Tue May  7 16:33:39 2019
 
 These are some helper functions to analyze human mobility graphs
 """
-from http.client import IncompleteRead
 import smopy
 import networkx as nx
 import numpy as np
-import datetime
-from trackintel.geogr.distances import haversine_dist
-
-
-def haversine_dist_of_shapely_objs(obj1, obj2):
-    """
-    Haversine distance of two shapely points
-
-    Parameters
-    ----------
-    obj1
-    obj2
-
-    Returns
-    -------
-    """
-    return haversine_dist(obj1.x, obj1.y, obj2.x, obj2.y)
-
-
-def nx_coordinate_layout(G):
-    """
-    Return networkx graph layout based on geographic coordinates.
-    Parameters
-    ----------
-    G : networkx graph
-        A networkx graph that was generated based on trackintel locations.
-        Nodes require the `center` attribute that holds a shapely point
-        geometry
-    Returns
-    -------
-    pos : dictionary
-        dictionary with node_id as key that holds coordinates for each node
-    """
-    node_center = nx.get_node_attributes(G, "center")
-    pos = {key: (geometry.x, geometry.y) for key, geometry in node_center.items()}
-
-    return pos
-
-
-def nx_coordinate_layout_smopy(G, smap):
-    """ "transforms WGS84 coordinates to pixel coordinates of a smopy map"""
-    node_center = nx.get_node_attributes(G, "center")
-    pos = {key: (smap.to_pixels(geometry.y, geometry.x)) for key, geometry in node_center.items()}
-
-    return pos
-
-
-def draw_smopy_basemap(G, figsize=(8, 6), zoom=10, ax=None):
-    """Draw a basemap with the extent given by graph G"""
-
-    pos_wgs = nx_coordinate_layout(G)
-    lon = [coords[0] for coords in pos_wgs.values()]
-    lat = [coords[1] for coords in pos_wgs.values()]
-
-    lon_min = min(lon)
-    lon_max = max(lon)
-    lat_min = min(lat)
-    lat_max = max(lat)
-    attempts = 0
-    while attempts < 3:
-        try:
-            # smap = smopy.Map(lat_min, lon_min, lat_max, lon_max, tileserver="http://tile.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png", z=zoom)
-            smap = smopy.Map(lat_min, lon_min, lat_max, lon_max, z=zoom)
-
-            break
-        except IncompleteRead as e:
-
-            attempts += 1
-            if attempts == 3:
-                print(G.graph["user_id"], e)
-                smap = smopy.Map(lat_min, lon_min, lat_max, lon_max)
-
-    # map = smopy.Map((min_y, max_y-min_y, min_x, max_x-min_x), z=5)
-    ax = smap.show_mpl(figsize=figsize, ax=ax)
-
-    return ax, smap
-
-
-#
-# def create_activity_graphs(staypoints, places, A_dict, temporal_bin_size=None):
-#
-#     if temporal_bin_size is None:
-#         G_list = list(tigraphs.generate_activity_graphs(places, A_dict).items())
-#
-#     else:
-#         # create graphs with temporal window
-#
-#         start_date = min(staypoints['started_at'])
-#         end_date = max(staypoints['finished_at'])
-#         date_step = temporal_bin_size
-#         nb_days = (end_date - start_date).days
-#
-#         end_date_list = [start_date + datetime.timedelta(days=int(x))
-#             for x in np.arange(date_step, nb_days, date_step)]
-#
-#         A_dict = {}
-#         G_list = []
-#         start_date_this = end_date_list
-#
-#         # todo deal with empty graphs/dicts
-#         # todo deal with missing user_ids in A_dict
-#
-#         for end_date_this in end_date_list:
-#             sp_this = staypoints[(staypoints['started_at'] > start_date_this) &
-#                                  (staypoints['finished_at'] < end_date_this)]
-#             places_this = places[places['place_id'].isin(sp_this['place_id'])]
-#
-#             A_dict = (tigraphs.weights_transition_count(sp_this))
-#
-#             G_list = G_list + list(tigraphs.generate_activity_graphs(places_this, A_dict).items())
-#
-#             start_date_this = end_date_this
-#
-#         # save graphs to file
-#         pickle.dump( G_list, open( GRAPH_OUTPUT + "_{}days.pkl".format(date_step) , "wb" ) )
+import pandas as pd
 
 
 def initialize_multigraph(user_id_this, locs_user_view, node_feature_names):
@@ -142,10 +27,7 @@ def initialize_multigraph(user_id_this, locs_user_view, node_feature_names):
 
     Returns
     -------
-
-    Notes
-    ------
-
+    G: networkx MultiDiGraph
     """
     # create graph
     G = nx.MultiDiGraph()
@@ -158,3 +40,90 @@ def initialize_multigraph(user_id_this, locs_user_view, node_feature_names):
     node_tuple = tuple(zip(node_ids, node_features))
     G.add_nodes_from(node_tuple)
     return G
+
+
+def delete_zero_edges(graph):
+    """
+    graph: networkx graph
+    """
+    edges_to_delete = [(a, b) for a, b, attrs in graph.edges(data=True) if attrs["weight"] < 1]
+    if len(edges_to_delete) > 0:
+        graph.remove_edges_from(edges_to_delete)
+    return graph
+
+
+def get_largest_component(graph):
+    """
+    Get largest component of networkx graph
+
+    graph: networkx Graph!
+    """
+    cc = sorted(
+        nx.connected_components(graph.to_undirected()),
+        key=len,
+        reverse=True,
+    )
+    graph_cleaned = graph.subgraph(cc[0])
+    return graph_cleaned.copy()
+
+
+def remove_loops(graph):
+    """
+    graph: networkx Graph
+    """
+    graph.remove_edges_from(nx.selfloop_edges(nx.DiGraph(graph)))
+    return graph
+
+
+def keep_important_nodes(graph, number_of_nodes):
+    """
+    Reduce to the nodes with highest degree (in + out degree)
+
+    graph: networkx Graph
+    """
+    sorted_dict = np.array(
+        [
+            [k, v]
+            for k, v in sorted(
+                dict(graph.degree()).items(),
+                key=lambda item: item[1],
+            )
+        ]
+    )
+    use_nodes = sorted_dict[-number_of_nodes:, 0]
+    graph = graph.subgraph(use_nodes)
+    return graph
+
+
+def get_adj_and_attr(activity_graph):
+    """
+    Given an ActivityGraph object, get the adjacency matrix and the node features separately
+
+    Parameters
+    ----------
+    graph : ActivityGraph
+
+    Returns
+    -------
+    adjacency: 2D scipy sparse matrix: adjacency matrix
+    node_feat_df: pandas DataFrame, node features with one row per node
+    """
+    list_of_nodes = list(activity_graph.nodes())
+
+    # get adjacency
+    adjacency = nx.linalg.graphmatrix.adjacency_matrix(activity_graph, nodelist=list_of_nodes)
+    # make a dataframe with the features
+    node_dicts = []
+    for i, node in enumerate(list_of_nodes):
+        node_dict = activity_graph.nodes[node]
+        node_dict["node_id"] = node
+        node_dict["id"] = i
+        node_dicts.append(node_dict)
+    node_feat_df = pd.DataFrame(node_dicts).set_index("id")
+
+    # add degrees
+    out_degree = np.array(np.sum(adjacency, axis=0)).flatten()
+    in_degree = np.array(np.sum(adjacency, axis=1)).flatten()
+    node_feat_df["in_degree"] = in_degree
+    node_feat_df["out_degree"] = out_degree
+    return adjacency, node_feat_df

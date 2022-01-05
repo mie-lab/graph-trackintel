@@ -7,12 +7,11 @@ import networkx as nx
 from scipy.sparse import coo_matrix
 import matplotlib.pyplot as plt
 import functools
+from trackintel.geogr.distances import haversine_dist
 from graph_trackintel.graph_utils import (
-    draw_smopy_basemap,
-    nx_coordinate_layout_smopy,
     initialize_multigraph,
 )
-from graph_trackintel.graph_utils import haversine_dist_of_shapely_objs as h_dist
+from graph_trackintel.plotting import draw_smopy_basemap, nx_coordinate_layout_smopy
 from pathlib import Path
 
 
@@ -349,7 +348,12 @@ class ActivityGraph:
         if filter_extent:
             center_node_id = int(self.get_k_importance_nodes(1))
             c_geom = self.G.nodes[center_node_id]["center"]
-            filtered_nodes = [n for n in self.G.nodes if h_dist(self.G.nodes[n]["center"], c_geom) < filter_dist * 1000]
+            filtered_nodes = [
+                n
+                for n in self.G.nodes
+                if haversine_dist(self.G.nodes[n]["center"].x, self.G.nodes[n]["center"].y, c_geom.x, c_geom.y)
+                < filter_dist * 1000
+            ]
             important_nodes = np.intersect1d(filtered_nodes, important_nodes)
 
         G = self.G.subgraph(important_nodes)
