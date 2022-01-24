@@ -18,6 +18,8 @@ from pathlib import Path
 class ActivityGraph:
     def __init__(self, staypoints, locations, node_feature_names=[], trips=None, gap_threshold=100):
         self.validate_user(staypoints, locations)
+        assert locations.index.name == "id", "Location ID must be set as index!"
+        assert staypoints.index.name == "id", "Staypoints ID must be set as index!"
         self.node_feature_names = node_feature_names
         self.gap_threshold = gap_threshold
         self.user_id = staypoints["user_id"].iloc[0]
