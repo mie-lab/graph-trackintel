@@ -8,4 +8,4 @@ This repo can then be installed in editable mode. In an activated virtual enviro
 ```
 pip install -e .
 ```
-This will execute the `setup.py` file and install required dependencies
+This will execute the `setup.py` file and install required dependencies.
