@@ -23,6 +23,10 @@ dependencies:
   - shapely=1.8.0
   - similaritymeasures>=0.4.4
   - tqdm>=4.63.0
+  # tests
+  - pytest
+  - pytest-cov
+  - pytest-xdist
   - pip
   - pip:
     - trackintel==1.1.5
