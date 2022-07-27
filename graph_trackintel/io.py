@@ -42,15 +42,6 @@ def write_graphs_to_postgresql(
                 sql.Identifier(graph_schema_name), sql.Identifier(graph_table_name)
             )
         )
-        psycopg_con.commit()
-        cur.execute(
-            sql.SQL("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA {} TO wnina;").format(
-                sql.Identifier(graph_schema_name)
-            )
-        )
-        cur.execute(sql.SQL("GRANT ALL ON SCHEMA {} TO wnina;").format(sql.Identifier(graph_schema_name)))
-        psycopg_con.commit()
-
     cur.execute(
         sql.SQL("insert into {}.{} values (%s, %s)").format(
             sql.Identifier(graph_schema_name), sql.Identifier(graph_table_name)
