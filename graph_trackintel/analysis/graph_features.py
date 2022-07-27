@@ -188,3 +188,52 @@ def hub_size(graph, thresh=0.8):
     # number of nodes needed to cover thresh times the traffic
     nodes_in_core = np.where(cumulative_counts > thresh * np.sum(counts))[0][0] + 1
     return nodes_in_core / np.sqrt(graph.number_of_nodes())
+
+
+def sp_length(graph, max_len=10):
+    """
+    Returns discrete histogram of path length occurences
+    """
+    all_sp = nx.floyd_warshall(graph)
+    all_sp_lens = [v for sp_dict in all_sp.values() for v in list(sp_dict.values())]
+    sp_len_counts, _ = np.histogram(all_sp_lens, bins=np.arange(1, max_len + 1))
+    return sp_len_counts
+
+
+def eigenvector_centrality(graph1):
+    """
+    Compute EV centrality of each node
+    Returns:
+        Dictionary of centralities per node
+    """
+    if isinstance(graph, nx.classes.multidigraph.MultiDiGraph):
+        graph = nx.DiGraph(graph)
+    try:
+        centrality = nx.eigenvector_centrality_numpy(graph)
+        return centrality
+    except:
+        return {0: 0}
+
+
+def betweenness_centrality(graph):
+    """
+    Compute betweenness centrality of each node
+    Returns:
+        Dictionary of centralities per node
+    """
+    if isinstance(graph, nx.classes.multidigraph.MultiDiGraph):
+        graph = nx.DiGraph(graph)
+    centrality = nx.algorithms.centrality.betweenness_centrality(graph)
+    return centrality
+
+
+def centrality_dist(graph, max_centrality=1, centrality_fun=betweenness_centrality):
+    """
+    Compute distribution of centrality in fixed size histogram vector
+    Returns:
+        1D np array of length 10
+    """
+    centrality = centrality_fun(graph)
+    centrality_vals = list(centrality.values())
+    centrality_hist, _ = np.histogram(centrality_vals, bins=np.arange(0, max_centrality + 0.1, 0.1))
+    return centrality_hist

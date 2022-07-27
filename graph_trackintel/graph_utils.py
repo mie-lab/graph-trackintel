@@ -122,8 +122,8 @@ def get_adj_and_attr(activity_graph):
     node_feat_df = pd.DataFrame(node_dicts).set_index("id")
 
     # add degrees
-    out_degree = np.array(np.sum(adjacency, axis=0)).flatten()
-    in_degree = np.array(np.sum(adjacency, axis=1)).flatten()
+    in_degree = np.array(np.sum(adjacency, axis=0)).flatten()
+    out_degree = np.array(np.sum(adjacency, axis=1)).flatten()
     node_feat_df["in_degree"] = in_degree
     node_feat_df["out_degree"] = out_degree
     return adjacency, node_feat_df

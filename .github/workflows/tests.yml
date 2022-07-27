@@ -21,7 +21,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         env: 
-          - .github/envs/39-latest-conda-forge.yaml
+          - environment.yml
 
       
     steps:
@@ -45,5 +45,4 @@ jobs:
         pytest -v -r s --color=yes --cov=trackintel --cov-append --cov-report term-missing --cov-report xml tests/
   
     - name: Codecov report
-      if: contains(matrix.env, '39-latest-conda-forge.yaml') && contains(matrix.os, 'ubuntu')
       uses: codecov/codecov-action@v1
