@@ -147,8 +147,8 @@ class ActivityGraph:
         ).transpose()
         temp_df["user_id"] = self.user_id
 
-        counts = counts.append(temp_df, ignore_index=True)
-
+        # counts = counts.append(temp_df, ignore_index=True)
+        counts = pd.concat([counts, temp_df], axis=0, ignore_index=True)
         return counts
 
     def weights_transition_count(self, staypoints, adjacency_dict=None, gap_threshold=None):
