@@ -1,10 +1,16 @@
 import pandas as pd
 import pytest
 import sqlalchemy
-from graph_trackintel.io import create_table, write_data_to_table, create_activity_graph_standard_table
+from graph_trackintel.io import (
+    create_table,
+    write_data_to_table,
+    create_activity_graph_standard_table,
+    insert_data_to_postgresql,
+    read_data_from_postgresql,
+    write_table_to_postgresql,
+)
 import os
 import psycopg2
-from psycopg2 import sql
 import networkx as nx
 
 
@@ -234,10 +240,10 @@ class TestWriteToTable:
         self.init_testing_table(con, schema_name="dataset_name", table_name="graphs")
 
         input_data = {
-            "user_id": ["1", "2", "3", "4"],
-            "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30"],
-            "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes"],
-            "is_full_graph": [True, False, True, False],
+            "user_id": ["1", "2", "3", "4", "5"],
+            "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30", "10-20-31"],
+            "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes", "25 minutes"],
+            "is_full_graph": [True, False, True, False, False],
         }
 
         write_data_to_table(psycopg_con=con, table_name=table_name, input_data=input_data, schema_name=schema_name)
@@ -274,8 +280,8 @@ class TestWriteToTable:
         pd.testing.assert_frame_equal(df, df_from_sql)
 
 
-class TestCreateActivityGraphStandardTable():
-    def test_run_function(self, conn_postgis):
+class TestCreateActivityGraphStandardTable:
+    def test_run_function(self, conn_postgis, clean_up_database):
         conn_string, con = conn_postgis
         schema_name = "my_graph_dataset"
         table_name = "graphs"
@@ -287,7 +293,7 @@ class TestCreateActivityGraphStandardTable():
             "start_date": "text",
             "duration": "text",
             "is_full_graph": "boolean",
-            "data": "bytea"
+            "data": "bytea",
         }
 
         column, datatype = get_table_schema(con, schema=schema_name, table=table_name)
@@ -297,3 +303,255 @@ class TestCreateActivityGraphStandardTable():
 
             assert datatype_from_dict == datatype[ix]
 
+
+class TestWriteActivityGraphsToPostgresql:
+    def test_case2(self, conn_postgis, clean_up_database):
+
+        conn_string, con = conn_postgis
+        schema_name = "my_graph_dataset"
+        table_name = "graphs"
+
+        create_activity_graph_standard_table(con=con, table_name=table_name, schema_name=schema_name)
+
+        graphs = [nx.erdos_renyi_graph(10, 0.2, seed=None, directed=False) for i in range(4)]
+        input_data = {
+            "user_id": ["1", "2", "3", "4"],
+            "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30"],
+            "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes"],
+            "is_full_graph": [True, False, True, False],
+            "data": graphs,
+        }
+
+        insert_data_to_postgresql(
+            con=con, table_name=table_name, schema_name=schema_name, input_data=input_data, data_field_name="data"
+        )
+
+    def test_case2_multiple_data_fields(self, conn_postgis, clean_up_database):
+
+        conn_string, con = conn_postgis
+        schema_name = "my_graph_dataset"
+        table_name = "graphs"
+
+        field_type_dict = {
+            "user_id": "text",
+            "start_date": "text",
+            "duration": "text",
+            "is_full_graph": "boolean",
+            "data": "bytea",
+            "data2": "bytea",
+        }
+
+        create_table(
+            psycopg_con=con,
+            field_type_dict=field_type_dict,
+            table_name=table_name,
+            schema_name=schema_name,
+            create_schema=True,
+            drop_if_exists=False,
+        )
+
+        graphs = [nx.erdos_renyi_graph(10, 0.2, seed=None, directed=False) for i in range(4)]
+        graphs2 = [nx.erdos_renyi_graph(10, 0.2, seed=None, directed=False) for i in range(4)]
+        input_data = {
+            "user_id": ["1", "2", "3", "4"],
+            "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30"],
+            "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes"],
+            "is_full_graph": [True, False, True, False],
+            "data": graphs,
+            "data2": graphs2,
+        }
+
+        insert_data_to_postgresql(
+            con=con,
+            table_name=table_name,
+            schema_name=schema_name,
+            input_data=input_data,
+            data_field_name=["data", "data2"],
+        )
+
+
+class TestReadDataFromPostgresql:
+    def test_write_read_compare(self, conn_postgis, clean_up_database):
+        conn_string, con = conn_postgis
+        engine = sqlalchemy.create_engine(conn_string)
+
+        schema_name = "my_graph_dataset"
+        table_name = "graphs"
+
+        create_activity_graph_standard_table(con=con, table_name=table_name, schema_name=schema_name)
+
+        graphs = [nx.erdos_renyi_graph(10 * (i + 1), 0.2, seed=None, directed=False) for i in range(4)]
+        input_data = {
+            "user_id": ["1", "2", "3", "4"],
+            "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30"],
+            "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes"],
+            "is_full_graph": [True, False, True, False],
+            "data": graphs,
+        }
+
+        insert_data_to_postgresql(
+            con=con, table_name=table_name, schema_name=schema_name, input_data=input_data, data_field_name="data"
+        )
+
+        query = f"select * from {schema_name}.{table_name}"
+        df_db = read_data_from_postgresql(sql=query, engine=engine, data_field_name="data")
+
+        df_input = pd.DataFrame(input_data)
+
+        for ix in range(len(graphs)):
+            g1 = df_db["data"].iloc[ix]
+            g2 = df_input["data"].iloc[ix]
+            assert len(g1) == len(g2)
+            assert len(g1.edges()) == len(g2.edges())
+
+
+class TestWriteTableToPostgresql:
+    def test_write_read_compare_pd(self, conn_postgis, clean_up_database):
+        conn_string, con = conn_postgis
+        engine = sqlalchemy.create_engine(conn_string)
+
+        schema_name = "my_graph_dataset"
+        table_name = "graphs"
+
+        create_activity_graph_standard_table(con=con, table_name=table_name, schema_name=schema_name)
+
+        graphs = [nx.erdos_renyi_graph(10 * (i + 1), 0.2, seed=None, directed=False) for i in range(4)]
+        input_data = {
+            "user_id": ["1", "2", "3", "4"],
+            "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30"],
+            "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes"],
+            "is_full_graph": [True, False, True, False],
+            "data": graphs,
+        }
+        df_input = pd.DataFrame(input_data)
+
+        write_table_to_postgresql(
+            df=df_input,
+            table_name=table_name,
+            engine=engine,
+            data_field_name="data",
+            encode_inplace=False,
+            schema_name=schema_name,
+            if_exists="append",
+        )
+
+        query = f"select * from {schema_name}.{table_name}"
+        df_db = read_data_from_postgresql(sql=query, engine=engine, data_field_name="data")
+
+        for ix in range(len(graphs)):
+            g1 = df_db["data"].iloc[ix]
+            g2 = df_input["data"].iloc[ix]
+            assert len(g1) == len(g2)
+            assert len(g1.edges()) == len(g2.edges())
+
+    def test_write_chunks_read_compare(self, conn_postgis, clean_up_database):
+
+        conn_string, con = conn_postgis
+        engine = sqlalchemy.create_engine(conn_string)
+
+        schema_name = "my_graph_dataset"
+        table_name = "graphs"
+
+        create_activity_graph_standard_table(con=con, table_name=table_name, schema_name=schema_name)
+
+        graphs = [nx.erdos_renyi_graph(10 * (i + 1), 0.2, seed=None, directed=False) for i in range(4)]
+        input_data = {
+            "user_id": ["1", "2", "3", "4"],
+            "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30"],
+            "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes"],
+            "is_full_graph": [True, False, True, False],
+            "data": graphs,
+        }
+        df_input = pd.DataFrame(input_data)
+
+        write_table_to_postgresql(
+            df=df_input[0:2],
+            table_name=table_name,
+            engine=engine,
+            data_field_name="data",
+            encode_inplace=False,
+            schema_name=schema_name,
+            if_exists="append",
+        )
+
+        write_table_to_postgresql(
+            df=df_input[2:],
+            table_name=table_name,
+            engine=engine,
+            data_field_name="data",
+            encode_inplace=False,
+            schema_name=schema_name,
+            if_exists="append",
+        )
+
+        query = f"select * from {schema_name}.{table_name}"
+        df_db = read_data_from_postgresql(sql=query, engine=engine, data_field_name="data")
+
+        for ix in range(len(graphs)):
+            g1 = df_db["data"].iloc[ix]
+            g2 = df_input["data"].iloc[ix]
+            assert len(g1) == len(g2)
+            assert len(g1.edges()) == len(g2.edges())
+
+    def test_write_multi_data_read_compare(self, conn_postgis, clean_up_database):
+
+        conn_string, con = conn_postgis
+        engine = sqlalchemy.create_engine(conn_string)
+
+        schema_name = "my_graph_dataset"
+        table_name = "graphs"
+
+        field_type_dict = {
+            "user_id": "text",
+            "start_date": "text",
+            "duration": "text",
+            "is_full_graph": "boolean",
+            "data": "bytea",
+            "data2": "bytea",
+        }
+
+        create_table(
+            psycopg_con=con,
+            field_type_dict=field_type_dict,
+            table_name=table_name,
+            schema_name=schema_name,
+            create_schema=True,
+            drop_if_exists=False,
+        )
+
+        graphs = [nx.erdos_renyi_graph(10 * (i + 1), 0.2, seed=None, directed=False) for i in range(4)]
+        graphs2 = [nx.erdos_renyi_graph(10 * (i + 1), 0.2, seed=None, directed=False) for i in range(4)]
+        input_data = {
+            "user_id": ["1", "2", "3", "4"],
+            "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30"],
+            "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes"],
+            "is_full_graph": [True, False, True, False],
+            "data": graphs,
+            "data2": graphs2,
+        }
+        df_input = pd.DataFrame(input_data)
+
+        write_table_to_postgresql(
+            df=df_input,
+            table_name=table_name,
+            engine=engine,
+            data_field_name=["data", "data2"],
+            encode_inplace=False,
+            schema_name=schema_name,
+            if_exists="append",
+        )
+
+        query = f"select * from {schema_name}.{table_name}"
+        df_db = read_data_from_postgresql(sql=query, engine=engine, data_field_name=["data", "data2"])
+
+        for ix in range(len(graphs)):
+            g1 = df_db["data"].iloc[ix]
+            g2 = df_input["data"].iloc[ix]
+            assert len(g1) == len(g2)
+            assert len(g1.edges()) == len(g2.edges())
+
+        for ix in range(len(graphs)):
+            g1 = df_db["data2"].iloc[ix]
+            g2 = df_input["data2"].iloc[ix]
+            assert len(g1) == len(g2)
+            assert len(g1.edges()) == len(g2.edges())
