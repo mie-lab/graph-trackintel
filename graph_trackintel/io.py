@@ -29,6 +29,7 @@ def write_graphs_to_postgresql(
     -------
 
     """
+    warn("write_graphs_to_postgresql is deprecated and follows an old data model", DeprecationWarning, stacklevel=2)
 
     pickle_string = zlib.compress(pickle.dumps(graph_data))
 
@@ -76,6 +77,7 @@ def read_graphs_from_postgresql(
     -------
 
     """
+    warn("write_graphs_to_postgresql is deprecated and follows an old data model", DeprecationWarning, stacklevel=2)
     # retrieve string
     cur = psycopg_con.cursor()
     cur.execute(

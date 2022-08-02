@@ -88,7 +88,6 @@ def get_table_schema(con, schema, table):
             AND pg_class.relname = '{table}'
         ORDER BY
             attnum ASC;"""
-    print(query)
     cur = con.cursor()
     cur.execute(query)
     schema = cur.fetchall()
