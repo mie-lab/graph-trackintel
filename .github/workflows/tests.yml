@@ -53,7 +53,7 @@ jobs:
       run: |
         conda install postgis=3.2.1 libxslt=1.1.33 -c conda-forge
         source .github/envs/setup_postgres.sh
-        pytest -v -r s --color=yes --cov=graph-trackintel --cov-append --cov-report term-missing --cov-report xml tests/test_io.py | tee /dev/stderr | if grep SKIPPED >/dev/null;then echo "TESTS SKIPPED, FAILING" && exit 1;fi
+        pytest -v -r s --color=yes --cov=graph-trackintel --cov-append --cov-report term-missing --cov-report xml tests/ | tee /dev/stderr | if grep SKIPPED >/dev/null;then echo "TESTS SKIPPED, FAILING" && exit 1;fi
     - name: Codecov report
       if: contains(matrix.os, 'ubuntu')
       uses: codecov/codecov-action@v1
