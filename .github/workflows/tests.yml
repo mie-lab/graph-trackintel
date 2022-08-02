@@ -35,11 +35,6 @@ jobs:
           miniforge-variant: Mambaforge
           use-mamba: true
           
-    - name: Check Environment
-      run: |
-        python -V
-        python -c "import trackintel; trackintel.print_version();"
-        conda info
     - name: Test with pytest
       run: |
         pytest -v -r s --color=yes --cov=graph-trackintel --cov-append --cov-report term-missing --cov-report xml tests/
