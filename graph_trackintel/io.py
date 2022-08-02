@@ -55,6 +55,28 @@ def write_graphs_to_postgresql(
     psycopg_con.commit()
     cur.close()
 
+def write_activity_graphs_to_postgresql():
+    pass
+
+def create_activity_graph_standard_table(con, table_name, schema_name, drop_if_exists=True, create_schema=True):
+
+    field_type_dict = {
+        "user_id": "text",
+        "start_date": "text",
+        "duration": "text",
+        "is_full_graph": "boolean",
+        "data": "bytea",
+    }
+
+    create_table(
+        psycopg_con=con,
+        field_type_dict=field_type_dict,
+        table_name=table_name,
+        schema_name=schema_name,
+        create_schema=create_schema,
+        drop_if_exists=drop_if_exists
+    )
+
 
 def read_graphs_from_postgresql(
     graph_table_name, psycopg_con, graph_schema_name="public", file_name="graph_data", decompress=True
@@ -200,26 +222,17 @@ def write_data_to_table(psycopg_con, table_name, input_data, schema_name="public
 
         if all([isinstance(k, list) for k in input_data.values()]):
             case = 2
-
         else:
-            # case 1
             case = 1
-
     else:
-        # case 3
         case = 3
 
-    # write a dictionary of column-name value pairs to a database
-
-    # case 3
     # sql insert header
     sql_header = f"INSERT INTO {schema_name}.{table_name}("
-
     if case == 3:
         sql_header = sql_header + ", ".join(list(input_data[0].keys()))
     else:
         sql_header = sql_header + ", ".join(list(input_data.keys()))
-
     sql_header = sql_header + ") VALUES "
 
     if case == 3:

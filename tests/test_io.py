@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 import sqlalchemy
-from graph_trackintel.io import create_table, write_data_to_table
+from graph_trackintel.io import create_table, write_data_to_table, create_activity_graph_standard_table
 import os
 import psycopg2
 from psycopg2 import sql
@@ -272,3 +272,28 @@ class TestWriteToTable:
         )
 
         pd.testing.assert_frame_equal(df, df_from_sql)
+
+
+class TestCreateActivityGraphStandardTable():
+    def test_run_function(self, conn_postgis):
+        conn_string, con = conn_postgis
+        schema_name = "my_graph_dataset"
+        table_name = "graphs"
+
+        create_activity_graph_standard_table(con=con, table_name=table_name, schema_name=schema_name)
+
+        field_type_dict = {
+            "user_id": "text",
+            "start_date": "text",
+            "duration": "text",
+            "is_full_graph": "boolean",
+            "data": "bytea"
+        }
+
+        column, datatype = get_table_schema(con, schema=schema_name, table=table_name)
+
+        for ix, col in enumerate(column):
+            datatype_from_dict = field_type_dict[col]
+
+            assert datatype_from_dict == datatype[ix]
+
