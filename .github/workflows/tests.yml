@@ -42,18 +42,18 @@ jobs:
         conda info
     - name: Test with pytest
       run: |
-        pytest -v -r s --color=yes --cov=trackintel --cov-append --cov-report term-missing --cov-report xml tests/
+        pytest -v -r s --color=yes --cov=graph-trackintel --cov-append --cov-report term-missing --cov-report xml tests/
   
     - name: Test with PostGIS
-      if: contains(matrix.env, '39-latest-conda-forge.yaml') && contains(matrix.os, 'ubuntu')
+      if: contains(matrix.os, 'ubuntu')
       env:
         PGUSER: postgres
         PGPASSWORD: postgres
         PGHOST: "127.0.0.1"
       run: |
-        conda install postgis -c conda-forge
+        conda install postgis=3.2.1 libxslt=1.1.33 -c conda-forge
         source .github/envs/setup_postgres.sh
-        pytest -v -r s --color=yes --cov=trackintel --cov-append --cov-report term-missing --cov-report xml tests/io/test_postgis.py | tee /dev/stderr | if grep SKIPPED >/dev/null;then echo "TESTS SKIPPED, FAILING" && exit 1;fi
+        pytest -v -r s --color=yes --cov=graph-trackintel --cov-append --cov-report term-missing --cov-report xml tests/test_io.py | tee /dev/stderr | if grep SKIPPED >/dev/null;then echo "TESTS SKIPPED, FAILING" && exit 1;fi
     - name: Codecov report
-      if: contains(matrix.env, '39-latest-conda-forge.yaml') && contains(matrix.os, 'ubuntu')
+      if: contains(matrix.os, 'ubuntu')
       uses: codecov/codecov-action@v1
