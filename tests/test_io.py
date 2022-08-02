@@ -217,8 +217,7 @@ class TestWriteToTable:
 
         input_data = {"user_id": "1", "start_date": "10-20-20", "duration": "20 minutes", "is_full_graph": False}
 
-        write_data_to_table(
-            psycopg_con=con, table_name=table_name, input_data=input_data, schema_name=schema_name)
+        write_data_to_table(psycopg_con=con, table_name=table_name, input_data=input_data, schema_name=schema_name)
 
         df = pd.DataFrame(input_data, index=[0])
 
@@ -241,8 +240,7 @@ class TestWriteToTable:
             "is_full_graph": [True, False, True, False],
         }
 
-        write_data_to_table(
-            psycopg_con=con, table_name=table_name, input_data=input_data, schema_name=schema_name)
+        write_data_to_table(psycopg_con=con, table_name=table_name, input_data=input_data, schema_name=schema_name)
 
         df = pd.DataFrame(input_data)
 
@@ -265,8 +263,7 @@ class TestWriteToTable:
             {"user_id": "4", "start_date": "10-20-24", "duration": "204 minutes", "is_full_graph": False},
         ]
 
-        write_data_to_table(
-            psycopg_con=con, table_name=table_name, input_data=input_data, schema_name=schema_name)
+        write_data_to_table(psycopg_con=con, table_name=table_name, input_data=input_data, schema_name=schema_name)
 
         df = pd.DataFrame(input_data)
 
@@ -275,4 +272,3 @@ class TestWriteToTable:
         )
 
         pd.testing.assert_frame_equal(df, df_from_sql)
-

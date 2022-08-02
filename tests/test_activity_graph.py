@@ -13,8 +13,7 @@ import datetime
 from shapely.geometry import Point
 
 CRS_WGS84 = "epsg:4326"
-#
-studies = ["geolife"]  # ,'gc1', 'geolife',]# 'tist_u1000', 'tist_b100', 'tist_b200', 'tist_u10000']
+
 n = "fconn"  # number of neighbors for neighbor weights
 
 
@@ -142,52 +141,6 @@ def example_locations():
     return locs
 
 
-@pytest.fixture
-def db_engine():
-    # build database login string from file
-    DBLOGIN_FILE = os.path.join("dblogin.json")
-    with open(DBLOGIN_FILE) as json_file:
-        LOGIN_DATA = json.load(json_file)
-
-    # @ in passwords can not be processed properly
-    if "@" in LOGIN_DATA["password"]:
-        LOGIN_DATA["password"] = LOGIN_DATA["password"].replace("@", "%40")
-
-    conn_string = "postgresql://{user}:{password}@{host}:{port}/{database}".format(**LOGIN_DATA)
-
-    return create_engine(conn_string)
-
-
-@pytest.fixture
-def geolife_user_1(db_engine):
-    engine = db_engine
-
-    sp = gpd.GeoDataFrame.from_postgis(
-        "SELECT * FROM geolife.staypoints where user_id = 1", engine, geom_col="geom", index_col="id"
-    )
-    for col in ["started_at", "finished_at"]:
-        sp[col] = pd.to_datetime(sp[col], utc=True)
-    locs = gpd.GeoDataFrame.from_postgis(
-        "SELECT * FROM geolife.locations where user_id = 1", engine, geom_col="center", index_col="id"
-    )
-    return sp, locs
-
-
-@pytest.fixture
-def gc1_user(db_engine):
-    engine = db_engine
-
-    sp = gpd.GeoDataFrame.from_postgis(
-        "SELECT * FROM gc1.staypoints where user_id = 1595", engine, geom_col="geom", index_col="id"
-    )
-    for col in ["started_at", "finished_at"]:
-        sp[col] = pd.to_datetime(sp[col], utc=True)
-    locs = gpd.GeoDataFrame.from_postgis(
-        "SELECT * FROM gc1.locations where user_id = 1595", engine, geom_col="center", index_col="id"
-    )
-    return sp, locs
-
-
 class TestValidate_user:
     def test1(self):
         pass
@@ -206,30 +159,6 @@ class TestActivtyGraph:
         A = np.asarray(AG.get_adjecency_matrix().todense())
         assert np.allclose(A, A_true)
 
-    def test_create_activity_graph_1_geolife_user(self, geolife_user_1):
-        """test if activity graph runs with geolife data"""
-        sp, locs = geolife_user_1
-        AG = ActivityGraph(sp, locs)
-
-
-# plot
-class TestPlot:
-    def test_plot_graph_1_geolife_user(self, geolife_user_1):
-        """create a plot of a geolife user"""
-        sp, locs = geolife_user_1
-        AG = ActivityGraph(sp, locs)
-        os.makedirs(os.path.join(".", "tests", "output_test_plots"), exist_ok=True)
-        AG.plot(filename=os.path.join(".", "tests", "output_test_plots", "geolife_spring"), layout="spring")
-        AG.plot(filename=os.path.join(".", "tests", "output_test_plots", "geolife_coordinate"), layout="coordinate")
-
-    def test_plot_graph_1_gc1_user(self, gc1_user):
-        """create a plot of a sbb gc user"""
-        sp, locs = gc1_user
-        AG = ActivityGraph(sp, locs)
-        os.makedirs(os.path.join(".", "tests", "output_test_plots"), exist_ok=True)
-        AG.plot(filename=os.path.join(".", "tests", "output_test_plots", "gc1_spring"), layout="spring")
-        AG.plot(filename=os.path.join(".", "tests", "output_test_plots", "gc1_coordinate"), layout="coordinate")
-
     def test_plot_example(self, example_staypoints, example_locations):
         """create a plot of a sbb gc user"""
         sp = example_staypoints
@@ -238,64 +167,3 @@ class TestPlot:
         os.makedirs(os.path.join(".", "tests", "output_test_plots"), exist_ok=True)
         AG.plot(filename=os.path.join(".", "tests", "output_test_plots", "example_spring"), layout="spring")
         AG.plot(filename=os.path.join(".", "tests", "output_test_plots", "example_coordinate"), layout="coordinate")
-
-    def test_plot_filter(self, gc1_user):
-        """test calling the filter_node_importance argument"""
-        sp, locs = gc1_user
-        AG = ActivityGraph(sp, locs)
-        os.makedirs(os.path.join(".", "tests", "output_test_plots"), exist_ok=True)
-        AG.plot(
-            filename=os.path.join(".", "tests", "output_test_plots", "gc1_spring25"),
-            layout="spring",
-            filter_node_importance=25,
-        )
-        AG.plot(
-            filename=os.path.join(".", "tests", "output_test_plots", "gc1_coordinate25"),
-            layout="coordinate",
-            filter_node_importance=25,
-        )
-
-
-def test_show_A_graph_1_gc1_user(gc1_user):
-    sp, locs = gc1_user
-    AG = ActivityGraph(sp, locs)
-    edge_type = AG.edge_types[0]
-    A = AG.get_adjecency_matrix_by_type(edge_type)
-    A2 = AG.get_adjecency_matrix()
-    pass
-
-
-def test_show_A_graph_1_gc1_user2(gc1_user):
-    sp, locs = gc1_user
-    AG = ActivityGraph(sp, locs)
-    A = AG.get_adjecency_matrix()
-    pass
-
-
-# edge_types
-
-
-def test_edge_attr_graph_1_geolife_user(geolife_user_1):
-    sp, locs = geolife_user_1
-    AG = ActivityGraph(sp, locs)
-    print(AG.edge_types)
-
-
-# get_adjecency_matrix_by_type
-
-
-def test_get_adjacency_matrix_wrong_edge_name(gc1_user):
-    sp, locs = gc1_user
-    AG = ActivityGraph(sp, locs)
-    edge_type = AG.edge_types[0]
-    with pytest.raises(AssertionError):
-        A = AG.get_adjecency_matrix_by_type("test")
-
-
-# get_k_importance_nodes
-
-
-def test_get_k_importance_nodes_1(gc1_user):
-    sp, locs = gc1_user
-    AG = ActivityGraph(sp, locs)
-    assert len(AG.get_k_importance_nodes(1)) == 1
