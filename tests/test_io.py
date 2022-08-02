@@ -50,6 +50,7 @@ def conn_postgis():
 
 @pytest.fixture()
 def clean_up_database(conn_postgis):
+    """drops all tables and schemas that were created"""
 
     yield
     conn_string, con = conn_postgis
@@ -103,7 +104,7 @@ def get_table_schema(con, schema, table):
 
 class TestCreateTable:
     def test_create_table_drop_if_exists_flag_error(self, conn_postgis, clean_up_database):
-
+        """Check create table error if table exists"""
         conn_string, con = conn_postgis
         field_type_dict = {"user_id": "text", "start_date": "text"}
 
@@ -124,6 +125,7 @@ class TestCreateTable:
             )
 
     def test_create_table_drop_if_exists_flag_noerror(self, conn_postgis, clean_up_database):
+        """test if existing tables can be overwritten"""
         conn_string, con = conn_postgis
         field_type_dict = {"user_id": "text", "start_date": "text"}
 
@@ -143,6 +145,7 @@ class TestCreateTable:
         )
 
     def test_create_schema(self, conn_postgis, clean_up_database):
+        """test 'create_schema' option"""
         conn_string, con = conn_postgis
         field_type_dict = {"user_id": "text", "start_date": "text"}
 
@@ -164,6 +167,7 @@ class TestCreateTable:
         )
 
     def test_create_table_for_time_binned_graphs(self, conn_postgis, clean_up_database):
+        """Test the creation of a table with different datatypes"""
         schema_name = "dataset_name"
         table_name = "graphs"
         conn_string, con = conn_postgis
@@ -196,6 +200,7 @@ class TestCreateTable:
 
 class TestWriteToTable:
     def init_testing_table(self, con, schema_name="dataset_name", table_name="graphs"):
+        """function to initialize a table for testing"""
 
         field_type_dict = {
             "user_id": "text",
@@ -216,6 +221,8 @@ class TestWriteToTable:
         )
 
     def test_write_to_table_case_1(self, conn_postgis, clean_up_database):
+        """test input format (case 1)"""
+
         conn_string, con = conn_postgis
         schema_name = "dataset_name"
         table_name = "graphs"
@@ -234,6 +241,8 @@ class TestWriteToTable:
         pd.testing.assert_frame_equal(df, df_from_sql)
 
     def test_write_to_table_case_2(self, conn_postgis, clean_up_database):
+        """test input format (case 2)"""
+
         conn_string, con = conn_postgis
         schema_name = "dataset_name"
         table_name = "graphs"
@@ -257,6 +266,8 @@ class TestWriteToTable:
         pd.testing.assert_frame_equal(df, df_from_sql)
 
     def test_write_to_table_case_3(self, conn_postgis, clean_up_database):
+        """test input format (case 3)"""
+
         conn_string, con = conn_postgis
         schema_name = "dataset_name"
         table_name = "graphs"
@@ -282,6 +293,7 @@ class TestWriteToTable:
 
 class TestCreateActivityGraphStandardTable:
     def test_run_function(self, conn_postgis, clean_up_database):
+        """test if table with correct datatypes is created"""
         conn_string, con = conn_postgis
         schema_name = "my_graph_dataset"
         table_name = "graphs"
@@ -306,7 +318,7 @@ class TestCreateActivityGraphStandardTable:
 
 class TestWriteActivityGraphsToPostgresql:
     def test_case2(self, conn_postgis, clean_up_database):
-
+        """test input format case 2"""
         conn_string, con = conn_postgis
         schema_name = "my_graph_dataset"
         table_name = "graphs"
@@ -327,7 +339,7 @@ class TestWriteActivityGraphsToPostgresql:
         )
 
     def test_case2_multiple_data_fields(self, conn_postgis, clean_up_database):
-
+        """test writing table with multiple data fields that need encoding"""
         conn_string, con = conn_postgis
         schema_name = "my_graph_dataset"
         table_name = "graphs"
@@ -372,6 +384,8 @@ class TestWriteActivityGraphsToPostgresql:
 
 class TestReadDataFromPostgresql:
     def test_write_read_compare(self, conn_postgis, clean_up_database):
+        """test consistency after writing to and reading from postgresql"""
+
         conn_string, con = conn_postgis
         engine = sqlalchemy.create_engine(conn_string)
 
@@ -407,6 +421,7 @@ class TestReadDataFromPostgresql:
 
 class TestWriteTableToPostgresql:
     def test_write_read_compare_pd(self, conn_postgis, clean_up_database):
+        """test consistency after writing to and reading from postgresql"""
         conn_string, con = conn_postgis
         engine = sqlalchemy.create_engine(conn_string)
 
@@ -445,6 +460,7 @@ class TestWriteTableToPostgresql:
             assert len(g1.edges()) == len(g2.edges())
 
     def test_write_chunks_read_compare(self, conn_postgis, clean_up_database):
+        """test consistency if data is written in chunks"""
 
         conn_string, con = conn_postgis
         engine = sqlalchemy.create_engine(conn_string)
@@ -494,7 +510,7 @@ class TestWriteTableToPostgresql:
             assert len(g1.edges()) == len(g2.edges())
 
     def test_write_multi_data_read_compare(self, conn_postgis, clean_up_database):
-
+        """test writing multiple data firelds that need encoding"""
         conn_string, con = conn_postgis
         engine = sqlalchemy.create_engine(conn_string)
 
