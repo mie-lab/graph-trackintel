@@ -1,6 +1,8 @@
 from psycopg2 import sql
 import pickle
 import zlib
+from warnings import warn
+from collections import defaultdict
 
 
 def write_graphs_to_postgresql(
@@ -96,8 +98,7 @@ def read_graphs_from_postgresql(
 def create_table(
     psycopg_con, table_name, field_type_dict, schema_name="public", drop_if_exists=False, create_schema=False
 ):
-
-    """
+    """Create a postgresql table based on a field name - field type mapping
 
     Parameters
     ----------
@@ -146,3 +147,116 @@ def create_table(
         cur.execute(sql_string)
 
         psycopg_con.commit()
+
+
+def write_data_to_table(psycopg_con, table_name, input_data, schema_name="public"):
+    """write data to postgresql table
+
+    Parameters
+    ----------
+    psycopg_con:
+        psycopg2 connection object
+    table_name: str
+        name of the table that will be created
+    input_data
+        Data needs to be structured in one of three ways and needs to match an existing table. Tables can be created
+        using the `graph-trackintel.io.create_table` function.
+        The three supported data structures are:
+
+            case 1: a single dictionary with field names as keys and values as values.
+                E.g., input_data = {"user_id": "1", "start_date": "10-20-20",
+                                "duration": "20 minutes", "is_full_graph": False}
+            case 2: a single dictionary with field names as keys and a list of values for each key.
+                E.g.,  input_data = {"user_id": ["1", "2", "3", "4"],
+                          "start_date": ["10-20-20", "10-20-21", "10-20-22", "10-20-30"],
+                          "duration": ["20 minutes", "22 minutes", "23 minutes", "24 minutes"],
+                          "is_full_graph": [True, False, True, False]}
+            case 3: a list of dictionaries with field names as keys and single values as values.
+                E.g., input_data = [{"user_id": "1", "start_date": "10-20-21", "duration": "21 minutes",
+                                  "is_full_graph": False},
+                                  {"user_id": "2", "start_date": "10-20-22",  "duration": "22 minutes",
+                                   "is_full_graph": True},
+                                  {"user_id": "3", "start_date": "10-20-23", "duration": "230 minutes",
+                                  "is_full_graph": True},
+                                  {"user_id": "4", "start_date": "10-20-24", "duration": "204 minutes",
+                                    "is_full_graph": False}]
+
+    schema_name: str
+        name of the schema in which the table will be created. Default is "public"
+
+    Returns
+    -------
+
+    """
+
+    # possible inputs:
+    # 1) dictionary with a single value per field
+    # 2) a dictionary with a list of values per field
+    # 3) a list of dictionaries with a single value per field
+
+    if isinstance(input_data, dict):
+
+        if all([isinstance(k, list) for k in input_data.values()]):
+            case = 2
+
+        else:
+            # case 1
+            case = 1
+
+    else:
+        # case 3
+        case = 3
+
+    # write a dictionary of column-name value pairs to a database
+
+    # case 3
+    # sql insert header
+    sql_header = f"INSERT INTO {schema_name}.{table_name}("
+
+    if case == 3:
+        sql_header = sql_header + ", ".join(list(input_data[0].keys()))
+    else:
+        sql_header = sql_header + ", ".join(list(input_data.keys()))
+
+    sql_header = sql_header + ") VALUES "
+
+    if case == 3:
+        input_data = _merge_dicts(input_data)
+        case = 2
+
+    # list of list with all values
+    list_of_input_values = [v for v in input_data.values()]
+
+    # list of tuples
+    if case == 1:
+        sql_placeholder = "(" + ", ".join(["%s"] * len(input_data.keys())) + ")"
+        sql_data = tuple(list_of_input_values)
+    if case == 2:
+        sql_placeholder = ", ".join(["%s"] * len(input_data.keys()))
+        sql_data = list(zip(*list_of_input_values))
+
+    sql_string = sql_header + sql_placeholder
+    with psycopg_con.cursor() as cur:
+        cur.execute(sql_string, sql_data)
+
+
+def _merge_dicts(dicts):
+    """merge two dictionaries with overlapping keys
+
+    Parameters
+    ----------
+    dicts: iterable of dictionaries
+
+    Returns: dictionary
+    -------
+
+    https://stackoverflow.com/questions/5946236/how-to-merge-multiple-dicts-with-same-key-or-different-key
+    """
+
+    dd = defaultdict(list)
+
+    for d in dicts:  # you can list as many input dicts as you want here
+        for key, value in d.items():
+            dd[key].append(value)
+
+    return dd
