@@ -164,6 +164,6 @@ class TestActivtyGraph:
         sp = example_staypoints
         locs = example_locations
         AG = ActivityGraph(sp, locs)
-        os.makedirs(os.path.join(".", "tests", "output_test_plots"), exist_ok=True)
-        AG.plot(filename=os.path.join(".", "tests", "output_test_plots", "example_spring"), layout="spring")
-        AG.plot(filename=os.path.join(".", "tests", "output_test_plots", "example_coordinate"), layout="coordinate")
+        os.makedirs(os.path.join(".", "output_test_plots"), exist_ok=True)
+        AG.plot(filename=os.path.join(".", "output_test_plots", "example_spring"), layout="spring")
+        AG.plot(filename=os.path.join(".", "output_test_plots", "example_coordinate"), layout="coordinate")
