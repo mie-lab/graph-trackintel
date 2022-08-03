@@ -81,7 +81,7 @@ def write_table_to_postgresql(
     data_field_name="data",
     encode_inplace=False,
     schema_name=None,
-    if_exists="fail",
+    if_exists="append",
     index=False,
     index_label=None,
     **kwargs,
@@ -189,6 +189,8 @@ def create_activity_graph_standard_table(con, table_name, schema_name, drop_if_e
         "start_date": "text",
         "duration": "text",
         "is_full_graph": "boolean",
+        "gap_threshold": "integer",
+        "trips": "boolean",
         "data": "bytea",
     }
 
