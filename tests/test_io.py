@@ -34,6 +34,7 @@ def conn_postgis():
     try:
         con = psycopg2.connect(conn_string)
         con.set_session(autocommit=True)
+        delete_all_tables_and_schemas(con)
     except psycopg2.OperationalError:
         try:
             # psycopg2.connect may gives operational error due to
@@ -41,19 +42,15 @@ def conn_postgis():
             # https://stackoverflow.com/questions/61081102/psycopg2-connect-gives-operational-error-unsupported-frontend-protocol
             conn_string = conn_string + "?sslmode=disable"
             con = psycopg2.connect(conn_string)
+            con.set_session(autocommit=True)
+            delete_all_tables_and_schemas(con)
         except psycopg2.OperationalError:
             pytest.skip("Cannot connect with postgresql database")
 
     yield conn_string, con
     con.close()
 
-
-@pytest.fixture()
-def clean_up_database(conn_postgis):
-    """drops all tables and schemas that were created"""
-
-    yield
-    conn_string, con = conn_postgis
+def delete_all_tables_and_schemas(con):
 
     with con.cursor() as cur:
         cur.execute(
@@ -73,6 +70,17 @@ def clean_up_database(conn_postgis):
             cur.execute("drop schema " + row[0] + " cascade")
 
         cur.close()
+
+@pytest.fixture()
+def clean_up_database(conn_postgis):
+    """drops all tables and schemas that were created"""
+
+    yield
+
+    conn_string, con = conn_postgis
+    delete_all_tables_and_schemas(con)
+
+
 
 
 def get_table_schema(con, schema, table):
@@ -305,6 +313,8 @@ class TestCreateActivityGraphStandardTable:
             "start_date": "text",
             "duration": "text",
             "is_full_graph": "boolean",
+            "gap_threshold": "integer",
+            "trips": "boolean",
             "data": "bytea",
         }
 
