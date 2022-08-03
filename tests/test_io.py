@@ -50,6 +50,7 @@ def conn_postgis():
     yield conn_string, con
     con.close()
 
+
 def delete_all_tables_and_schemas(con):
 
     with con.cursor() as cur:
@@ -71,6 +72,7 @@ def delete_all_tables_and_schemas(con):
 
         cur.close()
 
+
 @pytest.fixture()
 def clean_up_database(conn_postgis):
     """drops all tables and schemas that were created"""
@@ -79,8 +81,6 @@ def clean_up_database(conn_postgis):
 
     conn_string, con = conn_postgis
     delete_all_tables_and_schemas(con)
-
-
 
 
 def get_table_schema(con, schema, table):
