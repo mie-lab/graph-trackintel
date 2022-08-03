@@ -3,6 +3,7 @@ import geopandas as gpd
 import pytest
 import trackintel as ti
 from sqlalchemy import create_engine
+import graph_trackintel
 from graph_trackintel.activity_graph import ActivityGraph
 import numpy as np
 import os

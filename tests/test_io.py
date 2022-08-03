@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 import sqlalchemy
+import graph_trackintel
 from graph_trackintel.io import (
     create_table,
     write_data_to_table,
