@@ -315,6 +315,9 @@ class TestCreateActivityGraphStandardTable:
             "is_full_graph": "boolean",
             "gap_threshold": "integer",
             "trips": "boolean",
+            "min_daily_coverage": "double precision",
+            "min_nb_good_days": "integer",
+            "number_of_good_days": "integer",
             "data": "bytea",
         }
 
