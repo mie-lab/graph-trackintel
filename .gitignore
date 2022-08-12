@@ -137,3 +137,5 @@ dmypy.json
 
 # pycharm
 .idea/
+
+output_test_plots
