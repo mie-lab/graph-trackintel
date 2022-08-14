@@ -132,13 +132,30 @@ def highest_decile_distance(graph):
     return np.quantile(dist_list, 0.9)
 
 
-def get_degrees(graph, mode="out"):
+def get_degrees(graph, mode="out", sort_degrees=False):
     """
     Degree distribution of graph
+
+    Parameters
+    ----------
+    graph: Networkx graph
+    mode: str
+        Can be {"all", "out", "in"}. The type of node degree to consider. Default is "out"
+    sort_degrees: Boolean
+        the degree distribution is sorted in descending order
+
+    Returns
+        list of node degrees
+    -------
+
     """
     # one function for in, out and all degrees
     use_function = {"all": graph.degree(), "out": graph.out_degree(), "in": graph.in_degree()}
     degrees = list(dict(use_function[mode]).values())
+
+    if sort_degrees:
+        degrees = sorted(degrees)[::-1]
+
     return degrees
 
 
@@ -146,7 +163,8 @@ def func_simple_powerlaw(x, beta):
     return x ** (-beta)
 
 
-def fit_powerlaw(item_list):
+def fit_powerlaw(item_list, maxfev=3000, bounds=(0, 5)):
+
     if len(item_list) == 0 or np.sum(item_list) == 0:
         return 0
 
@@ -156,7 +174,7 @@ def fit_powerlaw(item_list):
     # Normalize by first value! Because: power function 1/x^beta always passes through (1,1) - we want to fit this
     normed_vals = normed_vals / normed_vals[0]
     params, _ = curve_fit(
-        func_simple_powerlaw, np.arange(len(normed_vals)) + 1, normed_vals, maxfev=3000, bounds=(0, 5)
+        func_simple_powerlaw, np.arange(len(normed_vals)) + 1, normed_vals, maxfev=maxfev, bounds=bounds
     )
 
     # Prev version: with cutoff and no normalization
@@ -165,9 +183,28 @@ def fit_powerlaw(item_list):
     return params[0]
 
 
-def degree_beta(graph):
-    degrees = np.array(list(dict(graph.out_degree()).values()))
-    return fit_powerlaw(degrees)
+def degree_beta(graph, k=None, degree_type="out"):
+    """
+    Returns powerlaw fit on degree distribution
+
+    Parameters
+    ----------
+    graph: Networkx graph
+    k: int
+        Number of highest degree nodes to consider. If "None" all degrees are considered.
+    degree_type: str
+    Can be {"all", "out", "in"}. The type of node degree to consider. Default is "out"
+
+    Returns
+    -------
+
+    """
+
+    degrees = get_degrees(graph, mode=degree_type, sort_degrees=True)
+    if k is not None:
+        degrees = degrees[:k]
+
+    return fit_powerlaw(np.asarray(degrees))
 
 
 def transition_beta(graph):
