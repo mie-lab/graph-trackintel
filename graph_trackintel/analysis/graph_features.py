@@ -6,6 +6,7 @@ from numpy.core.fromnumeric import sort
 import pandas as pd
 from scipy.optimize import curve_fit
 import trackintel as ti
+from warnings import warn
 
 
 def random_walk(graph, return_resets=False, random_walk_iters=1000):
@@ -163,8 +164,35 @@ def func_simple_powerlaw(x, beta):
     return x ** (-beta)
 
 
-def fit_powerlaw(item_list, maxfev=3000, bounds=(0, 5)):
+def func_truncated_powerlaw(x, beta, xo, cutoff):
+    """e.g., as used in Gonzalez, Marta C., Cesar A. Hidalgo, and Albert-Laszlo Barabasi.
+    "Understanding individual human mobility patterns." nature 453.7196 (2008): 779-782."""
+    return (x + xo) ** (-beta) * np.exp(-x / cutoff)
 
+
+def fit_function_on_node_degrees(item_list, fun, maxfev=3000, bounds=(0, 5), norm=True):
+
+    if len(item_list) == 0 or np.sum(item_list) == 0:
+        return 0
+
+    sorted_vals = sorted(item_list)[::-1]
+    # get relative probability
+
+    if norm:
+        sorted_vals = sorted_vals / sorted_vals[0]
+
+    if fun == "simple_powerlaw":
+        fun = func_simple_powerlaw
+    elif fun == "truncated_powerlaw":
+        fun = func_truncated_powerlaw
+
+    params, _ = curve_fit(fun, np.arange(len(sorted_vals)) + 1, sorted_vals, maxfev=maxfev, bounds=bounds)
+
+    return params[0]
+
+
+def fit_powerlaw(item_list, maxfev=3000, bounds=(0, 5)):
+    warn("fit_powerlaw is deprecated use fit_function_on_node_degrees instead", DeprecationWarning, stacklevel=2)
     if len(item_list) == 0 or np.sum(item_list) == 0:
         return 0
 
@@ -176,7 +204,6 @@ def fit_powerlaw(item_list, maxfev=3000, bounds=(0, 5)):
     params, _ = curve_fit(
         func_simple_powerlaw, np.arange(len(normed_vals)) + 1, normed_vals, maxfev=maxfev, bounds=bounds
     )
-
     # Prev version: with cutoff and no normalization
     # sorted_vals = (sorted(item_list)[::-1])[:cutoff]
     # normed_degrees = sorted_vals / np.sum(sorted_vals)
