@@ -48,12 +48,13 @@ class ActivityGraph:
 
         if trips is not None:
             self.validate_user(trips, locations)
+            self.user_id = trips["user_id"].iloc[0]
             if not all(x in trips.columns for x in ['origin_location_id', 'destination_location_id']):
                 assert staypoints is not None, "trips require columns ['origin_location_id', " \
                                                "'destination_location_id'] or staypoints need to be provided"
-                trips = _join_location_id(trips, staypoints)
+                _join_location_id(trips=trips, staypoints=staypoints)
 
-            self.weights_transition_count_trips(trips=trips, staypoints=staypoints)
+            self.weights_transition_count_trips(trips=trips)
 
         elif staypoints is not None:
             self.validate_user(staypoints, locations)
@@ -151,7 +152,8 @@ class ActivityGraph:
         # append a dataframe of self loops for all locations with weight 0
 
         try:
-            counts = trips_a.groupby(by=["user_id", "origin_location_id", "destination_location_id"]).size().reset_index(name="counts")
+            counts = trips_a.groupby(by=["user_id", "origin_location_id",
+                                         "destination_location_id"]).size().reset_index(name="counts")
             counts = self._add_all_loc_ids_to_counts(counts)
         except ValueError:
             # If there are only rows with nans, groupby throws an error but should
@@ -513,7 +515,7 @@ def _create_adjacency_matrix_from_transition_counts(counts):
     return A, location_id_order, "transition_counts"
 
 
-def _join_location_id(trips, sp):
+def _join_location_id(trips, staypoints):
     """ Join location id from staypoints to trips
     Parameters
     ----------
@@ -529,7 +531,7 @@ def _join_location_id(trips, sp):
     origin_not_na = ~trips["origin_staypoint_id"].isna()
     dest_not_na = ~trips["destination_staypoint_id"].isna()
 
-    trips.loc[origin_not_na, "origin_location_id"] = sp.loc[trips.loc[origin_not_na, "origin_staypoint_id"], "location_id"].values
-    trips.loc[dest_not_na, "destination_location_id"] = sp.loc[
+    trips.loc[origin_not_na, "origin_location_id"] = staypoints.loc[trips.loc[origin_not_na, "origin_staypoint_id"], "location_id"].values
+    trips.loc[dest_not_na, "destination_location_id"] = staypoints.loc[
         trips.loc[dest_not_na, "destination_staypoint_id"], "location_id"
     ].values
