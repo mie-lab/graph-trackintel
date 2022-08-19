@@ -107,12 +107,18 @@ class ActivityGraph:
         )
 
     def add_node_features_from_staypoints(
-        self, sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}, add_duration=False
+        self, staypoints, agg_dict={"started_at": list, "finished_at": list, "purpose": list}, add_duration=False
     ):
         """
         agg_dict is a dictionary passed on to pandas dataframe.agg()
 
         """
+        if agg_dict is None and not add_duration:
+            raise ValueError(f"Nothing to aggregate agg_dict is {agg_dict} and add_duration is {add_duration}")
+
+        if agg_dict is None:
+            agg_dict = {}
+        sp = staypoints
         if add_duration:
             sp = sp.copy()
             sp["duration"] = sp["finished_at"] - sp["started_at"]

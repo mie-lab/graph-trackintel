@@ -169,3 +169,52 @@ class TestActivityGraph:
         AG = gti.activity_graph.ActivityGraph(staypoints=sp, locations=locs)
         A = AG.get_adjecency_matrix().todense()
         assert np.allclose(A_true, A)
+
+class TestAddNodeFeaturesFromStaypoints():
+
+    def test_aggregation(self, single_user_graph):
+        sp, trips, locs = single_user_graph
+        AG = gti.activity_graph.ActivityGraph(staypoints=sp, locations=locs)
+        agg_dict = {"started_at": [min, max, list], "finished_at": 'max', "context": [list, "first"]}
+
+        column_names = [('started_at', 'min'), ('started_at', 'max'),
+                                     ('started_at', 'list'), ('finished_at', 'max'),
+                                     ('context', 'list'),   ('context', 'first')]
+
+        AG.add_node_features_from_staypoints(staypoints=sp, agg_dict=agg_dict)
+        nodefeats_df = pd.DataFrame([AG.G.nodes[node_id] for node_id in AG.G.nodes()]).set_index("location_id")
+        nodefeats_df = nodefeats_df[column_names]
+        sp_agg_df = sp.groupby("location_id").agg(agg_dict)
+        sp_agg_df.columns = column_names
+
+        pd.testing.assert_frame_equal(nodefeats_df, sp_agg_df)
+
+
+    def test_duration(self, single_user_graph):
+        sp, trips, locs = single_user_graph
+
+        AG = gti.activity_graph.ActivityGraph(staypoints=sp, locations=locs)
+        agg_dict = {}
+
+        AG.add_node_features_from_staypoints(staypoints=sp, agg_dict=agg_dict, add_duration=True)
+        nodefeats_df = pd.DataFrame([AG.G.nodes[node_id] for node_id in AG.G.nodes()]).set_index("location_id")
+        duration_from_graph = nodefeats_df['duration']
+
+        sp['duration'] = sp.finished_at - sp.started_at
+        duration_true = sp.groupby('location_id')['duration'].sum()
+
+        pd.testing.assert_series_equal(duration_from_graph, duration_true)
+
+    def test_error_nothing_to_aggregate(self, single_user_graph):
+        sp, trips, locs = single_user_graph
+
+        AG = gti.activity_graph.ActivityGraph(staypoints=sp, locations=locs)
+
+        with pytest.raises(ValueError):
+            AG.add_node_features_from_staypoints(staypoints=sp, agg_dict={}, add_duration=False)
+
+
+
+
+
+
