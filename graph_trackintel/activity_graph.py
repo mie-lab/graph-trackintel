@@ -480,6 +480,9 @@ class ActivityGraph:
     def get_adjecency_matrix(self):
         return nx.linalg.graphmatrix.adjacency_matrix(self.G).tocoo()
 
+    def get_node_feature_df(self):
+        return pd.DataFrame([self.G.nodes[node_id] for node_id in self.G.nodes()]).set_index("location_id")
+
 
 def _create_adjacency_matrix_from_transition_counts(counts):
     """
