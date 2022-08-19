@@ -153,9 +153,9 @@ class TestActivtyGraph:
         """Test if adjecency matrix gets corretly reproduced"""
         A_true = np.asarray([[0, 1, 0, 0], [0, 1, 1, 1], [0, 1, 0, 0], [1, 0, 0, 0]])
 
-        spts = example_staypoints
+        sp = example_staypoints
         locs = example_locations
-        AG = ActivityGraph(spts, locs)
+        AG = ActivityGraph(locations=locs, staypoints=sp)
         # AG.plot(os.path.join(".", "tests"))
         A = np.asarray(AG.get_adjecency_matrix().todense())
         assert np.allclose(A, A_true)
@@ -164,7 +164,7 @@ class TestActivtyGraph:
         """create a plot of a sbb gc user"""
         sp = example_staypoints
         locs = example_locations
-        AG = ActivityGraph(sp, locs)
+        AG = ActivityGraph(locations=locs, staypoints=sp)
         os.makedirs(os.path.join(".", "output_test_plots"), exist_ok=True)
         AG.plot(filename=os.path.join(".", "output_test_plots", "example_spring"), layout="spring")
         AG.plot(filename=os.path.join(".", "output_test_plots", "example_coordinate"), layout="coordinate")
