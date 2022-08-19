@@ -16,7 +16,7 @@ from pathlib import Path
 
 
 class ActivityGraph:
-    """ Class to represent mobiltiy as graphs (activity graph)
+    """Class to represent mobiltiy as graphs (activity graph)
 
     Creates a graph representation based on staypoints and locations or trips and locations for a single user.
     Locations are used as
@@ -35,9 +35,11 @@ class ActivityGraph:
 
     gap_threshold:
     """
-    def __init__(self, locations, staypoints=None, trips=None, node_feature_names=[],  gap_threshold=100):
-        assert staypoints is not None or trips is not None, "Activity graph needs to be initialized with either " \
-                                                          "staypoints or trips"
+
+    def __init__(self, locations, staypoints=None, trips=None, node_feature_names=[], gap_threshold=100):
+        assert staypoints is not None or trips is not None, (
+            "Activity graph needs to be initialized with either " "staypoints or trips"
+        )
 
         self.node_feature_names = node_feature_names
         self.gap_threshold = gap_threshold
@@ -45,13 +47,14 @@ class ActivityGraph:
         self.all_loc_ids = locations.index.unique().values
         assert locations.index.name == "id", "Location ID must be set as index!"
 
-
         if trips is not None:
             self.validate_user(trips, locations)
             self.user_id = trips["user_id"].iloc[0]
-            if not all(x in trips.columns for x in ['origin_location_id', 'destination_location_id']):
-                assert staypoints is not None, "trips require columns ['origin_location_id', " \
-                                               "'destination_location_id'] or staypoints need to be provided"
+            if not all(x in trips.columns for x in ["origin_location_id", "destination_location_id"]):
+                assert staypoints is not None, (
+                    "trips require columns ['origin_location_id', "
+                    "'destination_location_id'] or staypoints need to be provided"
+                )
                 _join_location_id(trips=trips, staypoints=staypoints)
 
             self.weights_transition_count_trips(trips=trips)
@@ -62,7 +65,6 @@ class ActivityGraph:
             assert staypoints.index.name == "id", "Staypoints ID must be set as index!"
             self.weights_transition_count(staypoints, gap_threshold=self.gap_threshold)
 
-
         self.G = self.generate_activity_graphs(locations)
 
     def init_activity_dict(self):
@@ -72,7 +74,7 @@ class ActivityGraph:
         self.adjacency_dict["edge_name"] = []
 
     def validate_user(self, sp_or_trips, locations):
-        """ Verify that all data comes from a single valid user.
+        """Verify that all data comes from a single valid user.
 
         A graph can only be constructed from a single user. Locations and staypoints or trips need to be from the
         same user.
@@ -105,15 +107,16 @@ class ActivityGraph:
         )
 
     def add_node_features_from_staypoints(
-        self, sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}, add_duration=False):
+        self, sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}, add_duration=False
+    ):
         """
         agg_dict is a dictionary passed on to pandas dataframe.agg()
 
         """
         if add_duration:
             sp = sp.copy()
-            sp['duration'] = sp['finished_at'] - sp['started_at']
-            agg_dict.update({'duration': sum})
+            sp["duration"] = sp["finished_at"] - sp["started_at"]
+            agg_dict.update({"duration": sum})
 
         sp_grp_by_loc = sp.groupby("location_id").agg(agg_dict)
 
@@ -152,8 +155,11 @@ class ActivityGraph:
         # append a dataframe of self loops for all locations with weight 0
 
         try:
-            counts = trips_a.groupby(by=["user_id", "origin_location_id",
-                                         "destination_location_id"]).size().reset_index(name="counts")
+            counts = (
+                trips_a.groupby(by=["user_id", "origin_location_id", "destination_location_id"])
+                .size()
+                .reset_index(name="counts")
+            )
             counts = self._add_all_loc_ids_to_counts(counts)
         except ValueError:
             # If there are only rows with nans, groupby throws an error but should
@@ -238,7 +244,9 @@ class ActivityGraph:
 
         try:
             counts = (
-                staypoints_a.groupby(by=["user_id", "origin_location_id", "destination_location_id"]).size().reset_index(name="counts")
+                staypoints_a.groupby(by=["user_id", "origin_location_id", "destination_location_id"])
+                .size()
+                .reset_index(name="counts")
             )
             counts = self._add_all_loc_ids_to_counts(counts)
         except ValueError:
@@ -516,7 +524,7 @@ def _create_adjacency_matrix_from_transition_counts(counts):
 
 
 def _join_location_id(trips, staypoints):
-    """ Join location id from staypoints to trips
+    """Join location id from staypoints to trips
     Parameters
     ----------
     trips: Geodataframe or Dataframe
@@ -531,7 +539,9 @@ def _join_location_id(trips, staypoints):
     origin_not_na = ~trips["origin_staypoint_id"].isna()
     dest_not_na = ~trips["destination_staypoint_id"].isna()
 
-    trips.loc[origin_not_na, "origin_location_id"] = staypoints.loc[trips.loc[origin_not_na, "origin_staypoint_id"], "location_id"].values
+    trips.loc[origin_not_na, "origin_location_id"] = staypoints.loc[
+        trips.loc[origin_not_na, "origin_staypoint_id"], "location_id"
+    ].values
     trips.loc[dest_not_na, "destination_location_id"] = staypoints.loc[
         trips.loc[dest_not_na, "destination_staypoint_id"], "location_id"
     ].values

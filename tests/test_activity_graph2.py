@@ -13,6 +13,8 @@ import json
 import datetime
 from shapely.geometry import Point
 from graph_trackintel.activity_graph import _join_location_id
+
+
 @pytest.fixture
 def single_user_graph():
     """Travel diary of a single user that visits 4 locations multiple times"""
@@ -48,7 +50,7 @@ def single_user_graph():
     c5 = "f"
     c6 = "g"
     c7 = "h"
-    c8  = "i"
+    c8 = "i"
 
     # staypoints
 
@@ -59,20 +61,20 @@ def single_user_graph():
     context = [c0, c1, c2, c3, c4, c5, c6, c7, c8]
 
     sp = gpd.GeoDataFrame(data=[location_id, started_at, finished_at, geometry, context]).transpose()
-    sp.columns = ['location_id', 'started_at', 'finished_at', 'geometry', 'context']
+    sp.columns = ["location_id", "started_at", "finished_at", "geometry", "context"]
     sp = sp.set_geometry("geometry")
-    sp.index.name = 'id'
-    sp['user_id'] = 1
+    sp.index.name = "id"
+    sp["user_id"] = 1
 
     # locations
     user_id = [1, 1, 1, 1]
     center = [l1, l2, l3, l4]
 
     locs = gpd.GeoDataFrame(data=[user_id, center]).transpose()
-    locs.columns = ['user_id', 'center']
-    locs = locs.set_geometry('center')
+    locs.columns = ["user_id", "center"]
+    locs = locs.set_geometry("center")
     locs.index = np.arange(4) + 1
-    locs.index.name = 'id'
+    locs.index.name = "id"
 
     # trips
     started_at = [t1, t3, t5, t7, t9, t11, t13, t15]
@@ -81,9 +83,9 @@ def single_user_graph():
     destination_staypoint_id = [1, 2, 3, 4, 5, 6, 7, 8]
 
     trips = pd.DataFrame(data=[started_at, finished_at, origin_staypoint_id, destination_staypoint_id]).transpose()
-    trips.columns = ['started_at', 'finished_at', 'origin_staypoint_id', 'destination_staypoint_id']
-    trips.index.name = 'id'
-    trips['user_id'] = 1
+    trips.columns = ["started_at", "finished_at", "origin_staypoint_id", "destination_staypoint_id"]
+    trips.index.name = "id"
+    trips["user_id"] = 1
 
     sp.as_staypoints
     trips.as_trips
@@ -92,7 +94,7 @@ def single_user_graph():
     return sp, trips, locs
 
 
-class TestJoinLocationId():
+class TestJoinLocationId:
     def test_error_without_fields(self, single_user_graph):
         sp, trips, locs = single_user_graph
 
@@ -109,9 +111,7 @@ class TestJoinLocationId():
         gti.activity_graph.ActivityGraph(locations=locs, trips=trips, staypoints=sp)
 
 
-
-class TestActivityGraph():
-
+class TestActivityGraph:
     def test_number_one(self, single_user_graph):
         sp, trips, locs = single_user_graph
 
@@ -123,7 +123,6 @@ class TestActivityGraph():
         sp_ = sp.copy()
         trips_ = trips.copy()
 
-
         # sp and locs have the same user
         gti.activity_graph.ActivityGraph(staypoints=sp, locations=locs)
 
@@ -132,52 +131,41 @@ class TestActivityGraph():
 
         # sp and locs have a different user
         with pytest.raises(AssertionError):
-            sp_['user_id'] = 2
+            sp_["user_id"] = 2
             gti.activity_graph.ActivityGraph(locations=locs, staypoints=sp_)
 
         # sp have several users
         with pytest.raises(AssertionError):
-            sp_['user_id'] = np.arange(len(sp_))
+            sp_["user_id"] = np.arange(len(sp_))
             gti.activity_graph.ActivityGraph(locations=locs, staypoints=sp_)
 
         # trips and locs have a different user
         with pytest.raises(AssertionError):
-            trips_['user_id'] = 2
+            trips_["user_id"] = 2
             gti.activity_graph.ActivityGraph(locations=locs, trips=trips_)
 
         # trips have several users
         with pytest.raises(AssertionError):
-            trips_['user_id'] = np.arange(len(trips_))
+            trips_["user_id"] = np.arange(len(trips_))
             gti.activity_graph.ActivityGraph(locations=locs, trips=trips_)
-
 
     def test_adjacency_from_trips(self, single_user_graph):
 
-            A_true = np.asmatrix([
-                                    [0., 2., 0., 1.],
-                                    [0., 0., 2., 0.],
-                                    [2., 0., 0., 0.],
-                                    [1, 0., 0., 0.]])
+        A_true = np.asmatrix([[0.0, 2.0, 0.0, 1.0], [0.0, 0.0, 2.0, 0.0], [2.0, 0.0, 0.0, 0.0], [1, 0.0, 0.0, 0.0]])
 
+        sp, trips, locs = single_user_graph
+        _join_location_id(trips=trips, staypoints=sp)
 
-            sp, trips, locs = single_user_graph
-            _join_location_id(trips=trips, staypoints=sp)
+        AG = gti.activity_graph.ActivityGraph(locations=locs, trips=trips)
 
-            AG = gti.activity_graph.ActivityGraph(locations=locs, trips=trips)
-
-            A = AG.get_adjecency_matrix().todense()
-            assert np.allclose(A_true, A)
+        A = AG.get_adjecency_matrix().todense()
+        assert np.allclose(A_true, A)
 
     def test_adjacency_from_sp(self, single_user_graph):
 
-            A_true = np.asmatrix([
-                                    [0., 2., 0., 1.],
-                                    [0., 0., 2., 0.],
-                                    [2., 0., 0., 0.],
-                                    [1, 0., 0., 0.]])
+        A_true = np.asmatrix([[0.0, 2.0, 0.0, 1.0], [0.0, 0.0, 2.0, 0.0], [2.0, 0.0, 0.0, 0.0], [1, 0.0, 0.0, 0.0]])
 
-
-            sp, trips, locs = single_user_graph
-            AG = gti.activity_graph.ActivityGraph(staypoints=sp, locations=locs)
-            A = AG.get_adjecency_matrix().todense()
-            assert np.allclose(A_true, A)
+        sp, trips, locs = single_user_graph
+        AG = gti.activity_graph.ActivityGraph(staypoints=sp, locations=locs)
+        A = AG.get_adjecency_matrix().todense()
+        assert np.allclose(A_true, A)
