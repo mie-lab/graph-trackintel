@@ -333,11 +333,22 @@ class ActivityGraph:
             # target structure for edge list:
             # [(0, 0, 'transition_counts', {'weight': 1.0, 'edge_name': 'transition_counts'}),
             # (0, 1, 'transition_counts', {'weight': 7.0, 'edge_name': 'transition_counts'}
-            edge_list = [(x[0], x[1], edge_name, {**x[2],
-                                                  **{"edge_name": edge_name,
-                                                        "origin_location_id": G.nodes[x[0]]["location_id"],
-                                                        "destination_location_id": G.nodes[x[1]]["location_id"]
-                                                             }}) for x in edge_list]
+            edge_list = [
+                (
+                    x[0],
+                    x[1],
+                    edge_name,
+                    {
+                        **x[2],
+                        **{
+                            "edge_name": edge_name,
+                            "origin_location_id": G.nodes[x[0]]["location_id"],
+                            "destination_location_id": G.nodes[x[1]]["location_id"],
+                        },
+                    },
+                )
+                for x in edge_list
+            ]
 
             G.add_edges_from(edge_list, weight="weight")
             G.graph["edge_keys"].append(edge_name)
@@ -500,7 +511,18 @@ class ActivityGraph:
         agg_dict is a dictionary passed on to pandas dataframe.agg()
 
         """
+        if agg_dict is None and not add_duration:
+            raise ValueError(f"Nothing to aggregate agg_dict is {agg_dict} and add_duration is {add_duration}")
+
+        if agg_dict is None:
+            agg_dict = {}
+
         self.check_add_location_id_to_trips(trips=trips, staypoints=staypoints)
+
+        if add_duration:
+            trips = trips.copy()
+            trips["duration"] = trips["finished_at"] - trips["started_at"]
+            agg_dict.update({"duration": sum})
 
         trips_grp = trips.groupby(["origin_location_id", "destination_location_id"]).agg(agg_dict)
 
@@ -527,6 +549,7 @@ class ActivityGraph:
         df.set_index(["origin_location_id", "destination_location_id"], inplace=True)
 
         return df
+
 
 def _create_adjacency_matrix_from_transition_counts(counts):
     """
