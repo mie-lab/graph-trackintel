@@ -481,11 +481,10 @@ class ActivityGraph:
         return nx.linalg.graphmatrix.adjacency_matrix(self.G).tocoo()
 
     def get_node_feature_gdf(self):
-        gdf = gpd.GeoDataFrame([self.G.nodes[node_id] for node_id in self.G.nodes()], geometry='center')
+        gdf = gpd.GeoDataFrame([self.G.nodes[node_id] for node_id in self.G.nodes()], geometry="center")
         gdf.set_index("location_id", inplace=True)
 
         return gdf
-
 
 
 def _create_adjacency_matrix_from_transition_counts(counts):

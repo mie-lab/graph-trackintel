@@ -187,7 +187,7 @@ class TestAddNodeFeaturesFromStaypoints:
         ]
 
         AG.add_node_features_from_staypoints(staypoints=sp, agg_dict=agg_dict)
-        nodefeats_df = pd.DataFrame([AG.G.nodes[node_id] for node_id in AG.G.nodes()]).set_index("location_id")
+        nodefeats_df = AG.get_node_feature_gdf()
         nodefeats_df = nodefeats_df[column_names]
         sp_agg_df = sp.groupby("location_id").agg(agg_dict)
         sp_agg_df.columns = column_names
@@ -201,7 +201,7 @@ class TestAddNodeFeaturesFromStaypoints:
         agg_dict = {}
 
         AG.add_node_features_from_staypoints(staypoints=sp, agg_dict=agg_dict, add_duration=True)
-        nodefeats_df = pd.DataFrame([AG.G.nodes[node_id] for node_id in AG.G.nodes()]).set_index("location_id")
+        nodefeats_df = AG.get_node_feature_gdf()
         duration_from_graph = nodefeats_df["duration"]
 
         sp["duration"] = sp.finished_at - sp.started_at
@@ -218,7 +218,7 @@ class TestAddNodeFeaturesFromStaypoints:
             AG.add_node_features_from_staypoints(staypoints=sp, agg_dict={}, add_duration=False)
 
 
-class TestGetNodeFeaturegdf():
+class TestGetNodeFeaturegdf:
     def test_no_added_features(self, single_user_graph):
         sp, trips, locs = single_user_graph
 
@@ -226,7 +226,7 @@ class TestGetNodeFeaturegdf():
 
         node_feat_gdf = AG.get_node_feature_gdf()
 
-        assert node_feat_gdf.index.name == 'location_id'
+        assert node_feat_gdf.index.name == "location_id"
 
         assert np.allclose(node_feat_gdf.index.values, locs.index.values)
 
@@ -242,11 +242,6 @@ class TestGetNodeFeaturegdf():
 
         AG.add_node_features_from_staypoints(staypoints=sp, agg_dict=agg_dict, add_duration=True)
         node_feat_gdf = AG.get_node_feature_gdf()
-        new_columns = ['started_at', 'finished_at', 'context', 'duration']
+        new_columns = ["started_at", "finished_at", "context", "duration"]
 
         assert all(x in node_feat_gdf.columns for x in new_columns)
-
-
-
-
-
