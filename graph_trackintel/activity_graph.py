@@ -16,20 +16,52 @@ from pathlib import Path
 
 
 class ActivityGraph:
-    def __init__(self, staypoints, locations, node_feature_names=[], trips=None, gap_threshold=100):
-        self.validate_user(staypoints, locations)
-        assert locations.index.name == "id", "Location ID must be set as index!"
-        assert staypoints.index.name == "id", "Staypoints ID must be set as index!"
+    """ Class to represent mobiltiy as graphs (activity graph)
+
+    Creates a graph representation based on staypoints and locations or trips and locations for a single user.
+    Locations are used as
+    nodes, staypoints or trips are used to determine the edges between the nodes.
+
+    Parameters
+    ----------
+    staypoints: Geodataframe
+        trackintel staypoints, staypoint id musst be set as index, Name has to be 'id'
+    locations: Geodataframe
+        trackintel locations, location id musst be set as index. Name has to be 'id'
+    trips: Dataframe or Geodataframe
+        trackintel trips. Trips need the columns ['origin_location_id', 'destination_location_id'] or staypoints have
+        to be provided
+    node_feature_names:
+
+    gap_threshold:
+    """
+    def __init__(self, locations, staypoints=None, trips=None, node_feature_names=[],  gap_threshold=100):
+        assert staypoints is not None or trips is not None, "Activity graph needs to be initialized with either " \
+                                                          "staypoints or trips"
+
         self.node_feature_names = node_feature_names
         self.gap_threshold = gap_threshold
-        self.user_id = staypoints["user_id"].iloc[0]
         self.init_activity_dict()
         self.all_loc_ids = locations.index.unique().values
+        assert locations.index.name == "id", "Location ID must be set as index!"
+
+
         if trips is not None:
             self.validate_user(trips, locations)
+            if not all(x in trips.columns for x in ['origin_location_id', 'destination_location_id']):
+                assert staypoints is not None, "trips require columns ['origin_location_id', " \
+                                               "'destination_location_id'] or staypoints need to be provided"
+                trips = _join_location_id(trips, staypoints)
+
             self.weights_transition_count_trips(trips=trips, staypoints=staypoints)
-        else:
+
+        elif staypoints is not None:
+            self.validate_user(staypoints, locations)
+            self.user_id = staypoints["user_id"].iloc[0]
+            assert staypoints.index.name == "id", "Staypoints ID must be set as index!"
             self.weights_transition_count(staypoints, gap_threshold=self.gap_threshold)
+
+
         self.G = self.generate_activity_graphs(locations)
 
     def init_activity_dict(self):
@@ -38,24 +70,37 @@ class ActivityGraph:
         self.adjacency_dict["location_id_order"] = []
         self.adjacency_dict["edge_name"] = []
 
-    def validate_user(self, staypoints, locations):
-        """Test if only a single user id was given"""
-        assert len(staypoints["user_id"].unique()) == 1, (
+    def validate_user(self, sp_or_trips, locations):
+        """ Verify that all data comes from a single valid user.
+
+        A graph can only be constructed from a single user. Locations and staypoints or trips need to be from the
+        same user.
+        Parameters
+        ----------
+        sp_or_trips: Geodataframe or Dataframe
+        locations: Geodataframe
+
+        Returns
+        -------
+
+        """
+
+        assert len(sp_or_trips["user_id"].unique()) == 1, (
             "An activity graph has to be user specific but your "
-            "staypoints have"
-            f" these users: {staypoints['user_id'].unique()}"
+            "staypoints or trips have"
+            f" these users: {sp_or_trips['user_id'].unique()}"
         )
-        assert len(staypoints["user_id"].unique()) == 1, (
+        assert len(sp_or_trips["user_id"].unique()) == 1, (
             "An activity graph has to be user specific but your "
             "locations have"
             f" these users: {locations['user_id'].unique()}"
         )
-        user_staypoints = staypoints["user_id"].unique()
+        user_sp_or_trips = sp_or_trips["user_id"].unique()
         user_locations = locations["user_id"].unique()
 
-        assert (user_staypoints == user_locations).all(), (
-            f"staypoints and locations need the same user_id but your "
-            f"data have staypoints: {user_locations} and locations: {user_locations}"
+        assert (user_sp_or_trips == user_locations).all(), (
+            f"staypoints or trips and locations need the same user_id but your "
+            f"data have staypoints or trips: {user_sp_or_trips} and locations: {user_locations}"
         )
 
     def add_node_features_from_staypoints(
@@ -77,7 +122,7 @@ class ActivityGraph:
             if location_id in sp_grp_by_loc.index:
                 self.G.nodes[node_id].update(sp_grp_by_loc.loc[location_id].to_dict())
 
-    def weights_transition_count_trips(self, trips, staypoints, adjacency_dict=None):
+    def weights_transition_count_trips(self, trips, adjacency_dict=None):
         """
         # copy of weights_transition_count
         Calculate the number of transition between locations as graph weights.
@@ -97,35 +142,22 @@ class ActivityGraph:
                 A dictionary of adjacency matrices of type scipy.sparse.coo_matrix
         """
         trips_a = trips.copy()
-        staypoints_a = staypoints.copy()
-        # join location_id to trips:
-
-        origin_not_na = ~trips_a["origin_staypoint_id"].isna()
-        dest_not_na = ~trips_a["destination_staypoint_id"].isna()
-
-        trips_a.loc[origin_not_na, "location_id"] = staypoints_a.loc[
-            trips_a.loc[origin_not_na, "origin_staypoint_id"], "location_id"
-        ].values
-        trips_a.loc[dest_not_na, "location_id_end"] = staypoints_a.loc[
-            trips_a.loc[dest_not_na, "destination_staypoint_id"], "location_id"
-        ].values
-
         trips_a = trips_a.sort_values(["started_at"])
 
         # delete trips with unknown start/end location
-        trips_a.dropna(subset=["location_id", "location_id_end"], inplace=True)
+        trips_a.dropna(subset=["origin_location_id", "destination_location_id"], inplace=True)
 
         # make sure that all nodes are present when creating the edges
         # append a dataframe of self loops for all locations with weight 0
 
         try:
-            counts = trips_a.groupby(by=["user_id", "location_id", "location_id_end"]).size().reset_index(name="counts")
+            counts = trips_a.groupby(by=["user_id", "origin_location_id", "destination_location_id"]).size().reset_index(name="counts")
             counts = self._add_all_loc_ids_to_counts(counts)
         except ValueError:
             # If there are only rows with nans, groupby throws an error but should
             # return an empty dataframe
-            counts = pd.DataFrame(columns=["user_id", "location_id", "location_id_end", "counts"])
-            print("empty user?", staypoints.iloc[0]["user_id"])
+            counts = pd.DataFrame(columns=["user_id", "origin_location_id", "destination_location_id", "counts"])
+            print("empty user?", trips.iloc[0]["user_id"])
 
         # create Adjacency matrix
         A, location_id_order, name = _create_adjacency_matrix_from_transition_counts(counts)
@@ -147,7 +179,7 @@ class ActivityGraph:
                 self.all_loc_ids,
                 np.zeros(self.all_loc_ids.shape),
             ],
-            index=["user_id", "location_id", "location_id_end", "counts"],
+            index=["user_id", "origin_location_id", "destination_location_id", "counts"],
         ).transpose()
         temp_df["user_id"] = self.user_id
 
@@ -195,21 +227,22 @@ class ActivityGraph:
             staypoints_a = staypoints_a[gap_flag]
 
         # count transitions between cluster
-        staypoints_a["location_id_end"] = staypoints_a.groupby("user_id")["location_id"].shift(-1)
+        staypoints_a["origin_location_id"] = staypoints_a["location_id"]
+        staypoints_a["destination_location_id"] = staypoints_a.groupby("user_id")["location_id"].shift(-1)
 
         # drop transitions without locations.
         # this means we only count locations between two valid locations
-        staypoints_a.dropna(subset=["location_id", "location_id_end"], inplace=True)
+        staypoints_a.dropna(subset=["origin_location_id", "destination_location_id"], inplace=True)
 
         try:
             counts = (
-                staypoints_a.groupby(by=["user_id", "location_id", "location_id_end"]).size().reset_index(name="counts")
+                staypoints_a.groupby(by=["user_id", "origin_location_id", "destination_location_id"]).size().reset_index(name="counts")
             )
             counts = self._add_all_loc_ids_to_counts(counts)
         except ValueError:
             # If there are only rows with nans, groupby throws an error but should
             # return an empty dataframe
-            counts = pd.DataFrame(columns=["user_id", "location_id", "location_id_end", "counts"])
+            counts = pd.DataFrame(columns=["user_id", "origin_location_id", "destination_location_id", "counts"])
 
         # create Adjacency matrix
         A, location_id_order, name = _create_adjacency_matrix_from_transition_counts(counts)
@@ -449,8 +482,8 @@ def _create_adjacency_matrix_from_transition_counts(counts):
             A dictionary of adjacency matrices of type scipy.sparse.coo_matrix
     """
 
-    row_ix = counts["location_id"].values.astype("int")
-    col_ix = counts["location_id_end"].values.astype("int")
+    row_ix = counts["origin_location_id"].values.astype("int")
+    col_ix = counts["destination_location_id"].values.astype("int")
     values = counts["counts"].values.astype("float")
 
     if len(values) == 0:
@@ -478,3 +511,25 @@ def _create_adjacency_matrix_from_transition_counts(counts):
         location_id_order = org_ix
 
     return A, location_id_order, "transition_counts"
+
+
+def _join_location_id(trips, sp):
+    """ Join location id from staypoints to trips
+    Parameters
+    ----------
+    trips: Geodataframe or Dataframe
+        trackintel trips
+    sp: Dataframe
+        trackintel staypoints
+
+    Returns
+    -------
+
+    """
+    origin_not_na = ~trips["origin_staypoint_id"].isna()
+    dest_not_na = ~trips["destination_staypoint_id"].isna()
+
+    trips.loc[origin_not_na, "origin_location_id"] = sp.loc[trips.loc[origin_not_na, "origin_staypoint_id"], "location_id"].values
+    trips.loc[dest_not_na, "destination_location_id"] = sp.loc[
+        trips.loc[dest_not_na, "destination_staypoint_id"], "location_id"
+    ].values
