@@ -50,13 +50,7 @@ class ActivityGraph:
         if trips is not None:
             self.validate_user(trips, locations)
             self.user_id = trips["user_id"].iloc[0]
-            if not all(x in trips.columns for x in ["origin_location_id", "destination_location_id"]):
-                assert staypoints is not None, (
-                    "trips require columns ['origin_location_id', "
-                    "'destination_location_id'] or staypoints need to be provided"
-                )
-                _join_location_id(trips=trips, staypoints=staypoints)
-
+            self.check_add_location_id_to_trips(trips=trips, staypoints=staypoints)
             self.weights_transition_count_trips(trips=trips)
 
         elif staypoints is not None:
@@ -105,6 +99,15 @@ class ActivityGraph:
             f"staypoints or trips and locations need the same user_id but your "
             f"data have staypoints or trips: {user_sp_or_trips} and locations: {user_locations}"
         )
+
+    def check_add_location_id_to_trips(self, trips, staypoints=None):
+
+        if not all(x in trips.columns for x in ["origin_location_id", "destination_location_id"]):
+            assert staypoints is not None, (
+                "trips require columns ['origin_location_id', "
+                "'destination_location_id'] or staypoints need to be provided"
+            )
+            _join_location_id(trips=trips, staypoints=staypoints)
 
     def weights_transition_count_trips(self, trips, adjacency_dict=None):
         """
@@ -319,6 +322,7 @@ class ActivityGraph:
             A = A_list[ix]
             location_id_order = location_id_order_list[ix]
             edge_name = edge_name_list[ix]
+
             # assert location_id_order
             for node_ix, location_id in enumerate(location_id_order):
                 assert location_id == G.nodes[node_ix]["location_id"]
@@ -329,7 +333,11 @@ class ActivityGraph:
             # target structure for edge list:
             # [(0, 0, 'transition_counts', {'weight': 1.0, 'edge_name': 'transition_counts'}),
             # (0, 1, 'transition_counts', {'weight': 7.0, 'edge_name': 'transition_counts'}
-            edge_list = [(x[0], x[1], edge_name, {**x[2], **{"edge_name": edge_name}}) for x in edge_list]
+            edge_list = [(x[0], x[1], edge_name, {**x[2],
+                                                  **{"edge_name": edge_name,
+                                                        "origin_location_id": G.nodes[x[0]]["location_id"],
+                                                        "destination_location_id": G.nodes[x[1]]["location_id"]
+                                                             }}) for x in edge_list]
 
             G.add_edges_from(edge_list, weight="weight")
             G.graph["edge_keys"].append(edge_name)
@@ -480,12 +488,45 @@ class ActivityGraph:
             if location_id in sp_grp_by_loc.index:
                 self.G.nodes[node_id].update(sp_grp_by_loc.loc[location_id].to_dict())
 
+    def add_edge_features_from_trips(
+        self,
+        trips,
+        edge_type_to_add="transition_counts",
+        agg_dict={"started_at": list, "finished_at": list},
+        add_duration=False,
+        staypoints=None,
+    ):
+        """
+        agg_dict is a dictionary passed on to pandas dataframe.agg()
+
+        """
+        self.check_add_location_id_to_trips(trips=trips, staypoints=staypoints)
+
+        trips_grp = trips.groupby(["origin_location_id", "destination_location_id"]).agg(agg_dict)
+
+        for origin_node_id, destination_node_id, edge_type, edge_data in self.G.edges(data=True, keys=True):
+            if edge_type != edge_type_to_add:
+                continue
+
+            origin_location_id = self.G.nodes[origin_node_id]["location_id"]
+            destination_location_id = self.G.nodes[destination_node_id]["location_id"]
+
+            if (origin_location_id, destination_location_id) in trips_grp.index:
+                self.G.edges[origin_node_id, destination_node_id, edge_type].update(
+                    trips_grp.loc[(origin_location_id, destination_location_id)].to_dict()
+                )
+
     def get_node_feature_gdf(self):
         gdf = gpd.GeoDataFrame([self.G.nodes[node_id] for node_id in self.G.nodes()], geometry="center")
         gdf.set_index("location_id", inplace=True)
 
         return gdf
 
+    def get_edge_feature_df(self):
+        df = gpd.GeoDataFrame([self.G.edges[key] for key in self.G.edges(keys=True)])
+        df.set_index(["origin_location_id", "destination_location_id"], inplace=True)
+
+        return df
 
 def _create_adjacency_matrix_from_transition_counts(counts):
     """

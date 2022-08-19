@@ -245,3 +245,50 @@ class TestGetNodeFeaturegdf:
         new_columns = ["started_at", "finished_at", "context", "duration"]
 
         assert all(x in node_feat_gdf.columns for x in new_columns)
+
+
+class TestAddEdgeFeaturesFromTrips():
+
+    def test_location_columns(self, single_user_graph):
+        sp, trips, locs = single_user_graph
+        trips_ = trips.copy()
+
+        AG = gti.activity_graph.ActivityGraph(locations=locs, staypoints=sp)
+
+        # trips without location id columns
+        with pytest.raises(AssertionError):
+            AG.add_edge_features_from_trips(trips)
+
+        # prior join
+        _join_location_id(trips=trips_, staypoints=sp)
+        AG.add_edge_features_from_trips(trips_)
+
+        # test_internal_join(self, single_user_graph):
+        AG = gti.activity_graph.ActivityGraph(locations=locs, staypoints=sp)
+        AG.add_edge_features_from_trips(trips=trips, staypoints=sp)
+
+
+
+    def test_general(self, single_user_graph):
+        sp, trips, locs = single_user_graph
+        AG = gti.activity_graph.ActivityGraph(locations=locs, staypoints=sp)
+        _join_location_id(trips=trips, staypoints=sp)
+
+        agg_dict = {"started_at": list, "finished_at": list}
+        trips_grp = trips.groupby(['origin_location_id', 'destination_location_id']).agg(agg_dict)
+
+        new_columns = ['started_at', 'finished_at']
+
+        AG.add_edge_features_from_trips(trips=trips, agg_dict=agg_dict)
+
+        edge_feature_df = AG.get_edge_feature_df()
+        edge_feature_df = edge_feature_df[new_columns]
+
+        pd.testing.assert_frame_equal(trips_grp, edge_feature_df)
+
+
+
+
+
+
+
