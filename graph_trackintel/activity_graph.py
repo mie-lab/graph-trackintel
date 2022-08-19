@@ -59,12 +59,16 @@ class ActivityGraph:
         )
 
     def add_node_features_from_staypoints(
-        self, sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}
-    ):
+        self, sp, agg_dict={"started_at": list, "finished_at": list, "purpose": list}, add_duration=False):
         """
         agg_dict is a dictionary passed on to pandas dataframe.agg()
 
         """
+        if add_duration:
+            sp = sp.copy()
+            sp['duration'] = sp['finished_at'] - sp['started_at']
+            agg_dict.update({'duration': sum})
+
         sp_grp_by_loc = sp.groupby("location_id").agg(agg_dict)
 
         for node_id, node_data in self.G.nodes(data=True):
