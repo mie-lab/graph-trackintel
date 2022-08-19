@@ -216,3 +216,37 @@ class TestAddNodeFeaturesFromStaypoints:
 
         with pytest.raises(ValueError):
             AG.add_node_features_from_staypoints(staypoints=sp, agg_dict={}, add_duration=False)
+
+
+class TestGetNodeFeaturegdf():
+    def test_no_added_features(self, single_user_graph):
+        sp, trips, locs = single_user_graph
+
+        AG = gti.activity_graph.ActivityGraph(locations=locs, staypoints=sp)
+
+        node_feat_gdf = AG.get_node_feature_gdf()
+
+        assert node_feat_gdf.index.name == 'location_id'
+
+        assert np.allclose(node_feat_gdf.index.values, locs.index.values)
+
+        assert all(node_feat_gdf.center.geom_equals(locs.center))
+
+    def test_with_node_features(self, single_user_graph):
+        """Test if added columns appear as node features"""
+
+        sp, trips, locs = single_user_graph
+        AG = gti.activity_graph.ActivityGraph(locations=locs, staypoints=sp)
+
+        agg_dict = {"started_at": min, "finished_at": max, "context": "first"}
+
+        AG.add_node_features_from_staypoints(staypoints=sp, agg_dict=agg_dict, add_duration=True)
+        node_feat_gdf = AG.get_node_feature_gdf()
+        new_columns = ['started_at', 'finished_at', 'context', 'duration']
+
+        assert all(x in node_feat_gdf.columns for x in new_columns)
+
+
+
+
+

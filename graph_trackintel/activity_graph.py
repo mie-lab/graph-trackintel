@@ -1,5 +1,5 @@
 import ntpath
-
+import geopandas as gpd
 import pandas as pd
 import numpy as np
 import os
@@ -480,8 +480,12 @@ class ActivityGraph:
     def get_adjecency_matrix(self):
         return nx.linalg.graphmatrix.adjacency_matrix(self.G).tocoo()
 
-    def get_node_feature_df(self):
-        return pd.DataFrame([self.G.nodes[node_id] for node_id in self.G.nodes()]).set_index("location_id")
+    def get_node_feature_gdf(self):
+        gdf = gpd.GeoDataFrame([self.G.nodes[node_id] for node_id in self.G.nodes()], geometry='center')
+        gdf.set_index("location_id", inplace=True)
+
+        return gdf
+
 
 
 def _create_adjacency_matrix_from_transition_counts(counts):
