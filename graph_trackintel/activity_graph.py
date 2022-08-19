@@ -106,32 +106,6 @@ class ActivityGraph:
             f"data have staypoints or trips: {user_sp_or_trips} and locations: {user_locations}"
         )
 
-    def add_node_features_from_staypoints(
-        self, staypoints, agg_dict={"started_at": list, "finished_at": list, "purpose": list}, add_duration=False
-    ):
-        """
-        agg_dict is a dictionary passed on to pandas dataframe.agg()
-
-        """
-        if agg_dict is None and not add_duration:
-            raise ValueError(f"Nothing to aggregate agg_dict is {agg_dict} and add_duration is {add_duration}")
-
-        if agg_dict is None:
-            agg_dict = {}
-        sp = staypoints
-        if add_duration:
-            sp = sp.copy()
-            sp["duration"] = sp["finished_at"] - sp["started_at"]
-            agg_dict.update({"duration": sum})
-
-        sp_grp_by_loc = sp.groupby("location_id").agg(agg_dict)
-
-        for node_id, node_data in self.G.nodes(data=True):
-            location_id = node_data["location_id"]
-            # check if location id is in sp_grp_by_loc
-            if location_id in sp_grp_by_loc.index:
-                self.G.nodes[node_id].update(sp_grp_by_loc.loc[location_id].to_dict())
-
     def weights_transition_count_trips(self, trips, adjacency_dict=None):
         """
         # copy of weights_transition_count
@@ -470,15 +444,41 @@ class ActivityGraph:
         plt.savefig(filename)
         plt.close()
 
-    def get_adjecency_matrix_by_type(self, edge_type):
+    def get_adjacency_matrix_by_type(self, edge_type):
         assert edge_type in self.adjacency_dict["edge_name"], (
             f"Only {self.adjacency_dict['edge_name']} are available " f"but you provided {edge_type}"
         )
         edge_type_ix = self.adjacency_dict["edge_name"].index(edge_type)
         return self.adjacency_dict["A"][edge_type_ix]
 
-    def get_adjecency_matrix(self):
+    def get_adjacency_matrix(self):
         return nx.linalg.graphmatrix.adjacency_matrix(self.G).tocoo()
+
+    def add_node_features_from_staypoints(
+        self, staypoints, agg_dict={"started_at": list, "finished_at": list, "purpose": list}, add_duration=False
+    ):
+        """
+        agg_dict is a dictionary passed on to pandas dataframe.agg()
+
+        """
+        if agg_dict is None and not add_duration:
+            raise ValueError(f"Nothing to aggregate agg_dict is {agg_dict} and add_duration is {add_duration}")
+
+        if agg_dict is None:
+            agg_dict = {}
+        sp = staypoints
+        if add_duration:
+            sp = sp.copy()
+            sp["duration"] = sp["finished_at"] - sp["started_at"]
+            agg_dict.update({"duration": sum})
+
+        sp_grp_by_loc = sp.groupby("location_id").agg(agg_dict)
+
+        for node_id, node_data in self.G.nodes(data=True):
+            location_id = node_data["location_id"]
+            # check if location id is in sp_grp_by_loc
+            if location_id in sp_grp_by_loc.index:
+                self.G.nodes[node_id].update(sp_grp_by_loc.loc[location_id].to_dict())
 
     def get_node_feature_gdf(self):
         gdf = gpd.GeoDataFrame([self.G.nodes[node_id] for node_id in self.G.nodes()], geometry="center")

@@ -158,7 +158,7 @@ class TestActivityGraph:
 
         AG = gti.activity_graph.ActivityGraph(locations=locs, trips=trips)
 
-        A = AG.get_adjecency_matrix().todense()
+        A = AG.get_adjacency_matrix().todense()
         assert np.allclose(A_true, A)
 
     def test_adjacency_from_sp(self, single_user_graph):
@@ -167,7 +167,7 @@ class TestActivityGraph:
 
         sp, trips, locs = single_user_graph
         AG = gti.activity_graph.ActivityGraph(staypoints=sp, locations=locs)
-        A = AG.get_adjecency_matrix().todense()
+        A = AG.get_adjacency_matrix().todense()
         assert np.allclose(A_true, A)
 
 

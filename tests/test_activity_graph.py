@@ -157,7 +157,7 @@ class TestActivtyGraph:
         locs = example_locations
         AG = ActivityGraph(locations=locs, staypoints=sp)
         # AG.plot(os.path.join(".", "tests"))
-        A = np.asarray(AG.get_adjecency_matrix().todense())
+        A = np.asarray(AG.get_adjacency_matrix().todense())
         assert np.allclose(A, A_true)
 
     def test_plot_example(self, example_staypoints, example_locations):
