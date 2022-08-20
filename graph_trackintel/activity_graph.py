@@ -507,6 +507,9 @@ class ActivityGraph:
         add_duration=False,
         staypoints=None,
     ):
+        # todo: Adding edge features from trips is really slow. Likely because we iterate all edges of each graph in
+        #  a simple for loop.
+
         """
         agg_dict is a dictionary passed on to pandas dataframe.agg()
 
