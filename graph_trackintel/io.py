@@ -139,7 +139,7 @@ def write_table_to_postgresql(
     )
 
 
-def read_data_from_postgresql(sql, engine, data_field_name="data"):
+def read_data_from_postgresql(sql, engine, data_field_name="data", **kwargs):
     """Read dataframe from postgresql and decode binary column(s)
 
     Parameters
@@ -155,7 +155,7 @@ def read_data_from_postgresql(sql, engine, data_field_name="data"):
     -------
     """
 
-    df = pd.read_sql(sql=sql, con=engine)
+    df = pd.read_sql(sql=sql, con=engine, **kwargs)
     if not isinstance(data_field_name, list):
         data_field_name = [data_field_name]
 
