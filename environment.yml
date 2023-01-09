@@ -31,4 +31,5 @@ dependencies:
   - pip
   - pip:
     - trackintel
+    - powerlaw
 

@@ -20,7 +20,7 @@ setup(
     author_email=("nwiedemann@ethz.ch"),
     license="MIT",
     url="https://github.com/mie-lab/graph-trackintel",
-    install_requires=["numpy", "scipy", "psycopg2", "networkx", "pyproj", "matplotlib", "trackintel"],
+    install_requires=["numpy", "scipy", "psycopg2", "networkx", "pyproj", "matplotlib", "trackintel", "powerlaw"],
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Intended Audience :: Science/Research",

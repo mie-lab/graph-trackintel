@@ -7,7 +7,8 @@ import pandas as pd
 from scipy.optimize import curve_fit
 import trackintel as ti
 from warnings import warn
-
+import copy
+import powerlaw
 
 def random_walk(graph, return_resets=False, random_walk_iters=1000):
     # start at node with highest degree
@@ -102,6 +103,7 @@ def get_point_dist(p1, p2, crs_is_projected=False):
     return dist
 
 
+
 def weighted_dists(graph):
     dist_list = []
     for (u, v, data) in graph.edges(data=True):
@@ -133,7 +135,7 @@ def highest_decile_distance(graph):
     return np.quantile(dist_list, 0.9)
 
 
-def get_degrees(graph, mode="out", sort_degrees=False):
+def get_degrees(graph, mode="out", sort_degrees=False, norm=None):
     """
     Degree distribution of graph
 
@@ -152,13 +154,50 @@ def get_degrees(graph, mode="out", sort_degrees=False):
     """
     # one function for in, out and all degrees
     use_function = {"all": graph.degree(), "out": graph.out_degree(), "in": graph.in_degree()}
-    degrees = list(dict(use_function[mode]).values())
+    degrees = copy.copy(list(dict(use_function[mode]).values()))
 
     if sort_degrees:
         degrees = sorted(degrees)[::-1]
 
+    if norm == 'max':
+        degrees = list(map(lambda x: x / max(degrees), degrees))
+    elif norm == 'sum':
+        degrees = list(map(lambda x: x / sum(degrees), degrees))
+
     return degrees
 
+def fit_degree_dist_power_law(graph, mode="out", fit_kwargs={}):
+    """
+    Fit a powerlaw to the degree distribution of an activity graph
+
+    Parameters
+    ----------
+    graph: Networkx graph object
+     mode: str
+        Can be {"all", "out", "in"}. The type of node degree to consider. Default is "out". See `get_degrees`
+    fit_kwargs: dict
+        Arguments for the powerlaw Fit object
+
+    Returns
+    powerlaw fit object, alpha and xmin parameters of powerlaw fit
+    -------
+
+    """
+
+    def cut_off_zeros(input_list):
+        if input_list[-1] > 0:
+            return input_list
+
+        for ix, el in enumerate(input_list[::-1]):
+            if el > 0:
+                return input_list[:-ix]
+
+        return []
+
+    degrees = get_degrees(graph, mode=mode, sort_degrees=True, norm=False)
+    degrees = cut_off_zeros(degrees)
+    fit = powerlaw.Fit(degrees, discrete=True, **fit_kwargs)
+    return fit, fit.alpha, fit.xmin
 
 def func_simple_powerlaw(x, beta):
     return x ** (-beta)
