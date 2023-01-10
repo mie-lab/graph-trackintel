@@ -10,6 +10,7 @@ from warnings import warn
 import copy
 import powerlaw
 
+
 def random_walk(graph, return_resets=False, random_walk_iters=1000):
     # start at node with highest degree
     all_degrees = np.array(graph.out_degree())
@@ -103,7 +104,6 @@ def get_point_dist(p1, p2, crs_is_projected=False):
     return dist
 
 
-
 def weighted_dists(graph):
     dist_list = []
     for (u, v, data) in graph.edges(data=True):
@@ -159,12 +159,13 @@ def get_degrees(graph, mode="out", sort_degrees=False, norm=None):
     if sort_degrees:
         degrees = sorted(degrees)[::-1]
 
-    if norm == 'max':
+    if norm == "max":
         degrees = list(map(lambda x: x / max(degrees), degrees))
-    elif norm == 'sum':
+    elif norm == "sum":
         degrees = list(map(lambda x: x / sum(degrees), degrees))
 
     return degrees
+
 
 def get_edge_weights(graph, sort_weights=False, norm=None):
     """
@@ -184,16 +185,16 @@ def get_edge_weights(graph, sort_weights=False, norm=None):
     # one function for in, out and all degrees
     edge_weights = np.array([edge[2]["weight"] for edge in graph.edges(data=True)])
 
-
     if sort_weights:
         edge_weights = sorted(edge_weights)[::-1]
 
-    if norm == 'max':
+    if norm == "max":
         edge_weights = list(map(lambda x: x / max(edge_weights), edge_weights))
-    elif norm == 'sum':
+    elif norm == "sum":
         edge_weights = list(map(lambda x: x / sum(edge_weights), edge_weights))
 
     return edge_weights
+
 
 def fit_degree_dist_power_law(graph, mode="out", fit_kwargs={}):
     """
@@ -217,6 +218,7 @@ def fit_degree_dist_power_law(graph, mode="out", fit_kwargs={}):
     fit = powerlaw.Fit(degrees, discrete=True, **fit_kwargs)
     return fit, fit.alpha, fit.xmin
 
+
 def fit_edge_weight_dist_power_law(graph, fit_kwargs={}):
     """
     Fit a powerlaw to the edge weight distribution of an activity graph
@@ -239,6 +241,7 @@ def fit_edge_weight_dist_power_law(graph, fit_kwargs={}):
     fit = powerlaw.Fit(edge_weights, discrete=True, **fit_kwargs)
 
     return fit, fit.alpha, fit.xmin
+
 
 def func_simple_powerlaw(x, beta):
     return x ** (-beta)
@@ -384,8 +387,7 @@ def centrality_dist(graph, max_centrality=1, centrality_fun=betweenness_centrali
 
 
 def _cut_off_zeros_from_sorted_list(input_list):
-    """ returns the input list without zeros. Input has to be sorted in ascending order.
-    """
+    """returns the input list without zeros. Input has to be sorted in ascending order."""
     if input_list[-1] > 0:
         return input_list
 
