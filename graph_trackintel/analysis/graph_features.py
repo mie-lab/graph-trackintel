@@ -166,6 +166,35 @@ def get_degrees(graph, mode="out", sort_degrees=False, norm=None):
 
     return degrees
 
+def get_edge_weights(graph, sort_weights=False, norm=None):
+    """
+    Returns list of edge weight
+
+    Parameters
+    ----------
+    graph: Networkx graph
+    sort_degrees: Boolean
+        edge weights are sorted in descending order
+
+    Returns
+        list of edge weights
+    -------
+
+    """
+    # one function for in, out and all degrees
+    edge_weights = np.array([edge[2]["weight"] for edge in graph.edges(data=True)])
+
+
+    if sort_weights:
+        edge_weights = sorted(edge_weights)[::-1]
+
+    if norm == 'max':
+        edge_weights = list(map(lambda x: x / max(edge_weights), edge_weights))
+    elif norm == 'sum':
+        edge_weights = list(map(lambda x: x / sum(edge_weights), edge_weights))
+
+    return edge_weights
+
 def fit_degree_dist_power_law(graph, mode="out", fit_kwargs={}):
     """
     Fit a powerlaw to the degree distribution of an activity graph
@@ -183,20 +212,32 @@ def fit_degree_dist_power_law(graph, mode="out", fit_kwargs={}):
     -------
 
     """
-
-    def cut_off_zeros(input_list):
-        if input_list[-1] > 0:
-            return input_list
-
-        for ix, el in enumerate(input_list[::-1]):
-            if el > 0:
-                return input_list[:-ix]
-
-        return []
-
     degrees = get_degrees(graph, mode=mode, sort_degrees=True, norm=False)
-    degrees = cut_off_zeros(degrees)
+    degrees = _cut_off_zeros_from_sorted_list(degrees)
     fit = powerlaw.Fit(degrees, discrete=True, **fit_kwargs)
+    return fit, fit.alpha, fit.xmin
+
+def fit_edge_weight_dist_power_law(graph, fit_kwargs={}):
+    """
+    Fit a powerlaw to the edge weight distribution of an activity graph
+
+    Parameters
+    ----------
+    graph: Networkx graph object
+     mode: str
+        Can be {"all", "out", "in"}. The type of node degree to consider. Default is "out". See `get_degrees`
+    fit_kwargs: dict
+        Arguments for the powerlaw Fit object
+
+    Returns
+    powerlaw fit object, alpha and xmin parameters of powerlaw fit
+    -------
+
+    """
+    edge_weights = get_edge_weights(graph, sort_degrees=True, norm=False)
+    edge_weights = _cut_off_zeros_from_sorted_list(edge_weights)
+    fit = powerlaw.Fit(edge_weights, discrete=True, **fit_kwargs)
+
     return fit, fit.alpha, fit.xmin
 
 def func_simple_powerlaw(x, beta):
@@ -340,3 +381,16 @@ def centrality_dist(graph, max_centrality=1, centrality_fun=betweenness_centrali
     centrality_vals = list(centrality.values())
     centrality_hist, _ = np.histogram(centrality_vals, bins=np.arange(0, max_centrality + 0.1, 0.1))
     return centrality_hist
+
+
+def _cut_off_zeros_from_sorted_list(input_list):
+    """ returns the input list without zeros. Input has to be sorted in ascending order.
+    """
+    if input_list[-1] > 0:
+        return input_list
+
+    for ix, el in enumerate(input_list[::-1]):
+        if el > 0:
+            return input_list[:-ix]
+
+    return []
