@@ -359,7 +359,7 @@ class ActivityGraph:
 
     def plot(
         self,
-        filename,
+        filename=None,
         layout="spring",
         edge_attributes=None,
         filter_node_importance=None,
@@ -368,6 +368,7 @@ class ActivityGraph:
         dist_spring_layout=10,
         draw_edge_label=False,
         draw_edge_label_type="transition_counts",
+        close_figure=True,
     ):
         """
 
@@ -385,8 +386,9 @@ class ActivityGraph:
         -------
 
         """
-        folder_name = ntpath.dirname(filename)
-        Path(folder_name).mkdir(parents=True, exist_ok=True)
+        if filename is not None:
+            folder_name = ntpath.dirname(filename)
+            Path(folder_name).mkdir(parents=True, exist_ok=True)
 
         if filter_node_importance is not None:
             important_nodes = self.get_k_importance_nodes(filter_node_importance)
@@ -460,8 +462,11 @@ class ActivityGraph:
             GG.add_edges_from(edges_new)
             nx.draw_networkx_edge_labels(GG, pos, edge_labels=edges_new, label_pos=0.2)
 
-        plt.savefig(filename)
-        plt.close()
+        if filename is not None:
+            plt.savefig(filename)
+
+        if close_figure:
+            plt.close()
 
     def get_adjacency_matrix_by_type(self, edge_type):
         assert edge_type in self.adjacency_dict["edge_name"], (
