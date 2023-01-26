@@ -156,6 +156,8 @@ def read_data_from_postgresql(sql, engine, data_field_name="data", **kwargs):
     """
 
     df = pd.read_sql(sql=sql, con=engine, **kwargs)
+    if df.empty:
+        raise ValueError(f"the sql query '{sql}' returned an empty dataframe")
     if not isinstance(data_field_name, list):
         data_field_name = [data_field_name]
 
