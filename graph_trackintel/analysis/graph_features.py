@@ -135,7 +135,7 @@ def highest_decile_distance(graph):
     return np.quantile(dist_list, 0.9)
 
 
-def get_degrees(graph, mode="out", sort_degrees=False, norm=None):
+def get_degrees(graph, mode="out", sort_degrees=False, norm=None, weight=None):
     """
     Degree distribution of graph
 
@@ -153,7 +153,8 @@ def get_degrees(graph, mode="out", sort_degrees=False, norm=None):
 
     """
     # one function for in, out and all degrees
-    use_function = {"all": graph.degree(), "out": graph.out_degree(), "in": graph.in_degree()}
+    use_function = {"all": graph.degree(weight=weight), "out": graph.out_degree(weight=weight),
+                    "in": graph.in_degree(weight=weight)}
     degrees = copy.copy(list(dict(use_function[mode]).values()))
 
     if sort_degrees:
