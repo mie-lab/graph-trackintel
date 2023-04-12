@@ -196,7 +196,7 @@ class ActivityGraph:
         adjacency_dict : dictionary
                 A dictionary of adjacency matrices of type scipy.sparse.coo_matrix
         gap_threshold: float
-                Maximum time between the start of two staypoints so that they are still considered consecutive
+                Maximum time between the start of two staypoints so that they are still considered consecutive (hours)
 
         """
         gap_threshold = pd.to_timedelta("{}h".format(gap_threshold))
