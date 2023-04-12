@@ -33,7 +33,7 @@ class ActivityGraph:
         to be provided
     node_feature_names:
 
-    gap_threshold:
+    gap_threshold: (hours)
     """
 
     def __init__(self, locations, staypoints=None, trips=None, node_feature_names=[], gap_threshold=100):
