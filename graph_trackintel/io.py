@@ -248,9 +248,7 @@ def create_table(
         sql_string = sql.SQL(f"create table {schema_name}.{table_name} ( ")
 
         for ix, (field_name, field_type) in enumerate(field_type_dict.items()):
-
             if ix == len(field_type_dict) - 1:
-
                 sql_string = sql_string + sql.SQL(f"{field_name} {field_type}")
             else:
                 sql_string = sql_string + sql.SQL(f"{field_name} {field_type}, ")

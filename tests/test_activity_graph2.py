@@ -150,7 +150,6 @@ class TestActivityGraph:
             gti.activity_graph.ActivityGraph(locations=locs, trips=trips_)
 
     def test_adjacency_from_trips(self, single_user_graph):
-
         A_true = np.asmatrix([[0.0, 2.0, 0.0, 1.0], [0.0, 0.0, 2.0, 0.0], [2.0, 0.0, 0.0, 0.0], [1, 0.0, 0.0, 0.0]])
 
         sp, trips, locs = single_user_graph
@@ -162,7 +161,6 @@ class TestActivityGraph:
         assert np.allclose(A_true, A)
 
     def test_adjacency_from_sp(self, single_user_graph):
-
         A_true = np.asmatrix([[0.0, 2.0, 0.0, 1.0], [0.0, 0.0, 2.0, 0.0], [2.0, 0.0, 0.0, 0.0], [1, 0.0, 0.0, 0.0]])
 
         sp, trips, locs = single_user_graph

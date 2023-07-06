@@ -53,7 +53,6 @@ def conn_postgis():
 
 
 def delete_all_tables_and_schemas(con):
-
     with con.cursor() as cur:
         cur.execute(
             "SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema not in ('information_schema', 'pg_catalog')  ORDER BY table_schema,table_name"

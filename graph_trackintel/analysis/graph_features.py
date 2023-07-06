@@ -106,7 +106,7 @@ def get_point_dist(p1, p2, crs_is_projected=False):
 
 def weighted_dists(graph):
     dist_list = []
-    for (u, v, data) in graph.edges(data=True):
+    for u, v, data in graph.edges(data=True):
         loc_u = graph.nodes[u]["center"]
         loc_v = graph.nodes[v]["center"]
         weight = data["weight"]
@@ -119,7 +119,7 @@ def median_trip_distance(graph):
     dist_list = weighted_dists(graph)
     if len(dist_list) == 0:
         print("dist list nan")
-        for (u, v, data) in graph.edges(data=True):
+        for u, v, data in graph.edges(data=True):
             print(u, v, data["weight"])
         return np.nan
     return np.median(dist_list)
@@ -129,7 +129,7 @@ def highest_decile_distance(graph):
     dist_list = weighted_dists(graph)
     if len(dist_list) == 0:
         print("dist list nan")
-        for (u, v, data) in graph.edges(data=True):
+        for u, v, data in graph.edges(data=True):
             print(u, v, data["weight"])
         return np.nan
     return np.quantile(dist_list, 0.9)
@@ -153,8 +153,11 @@ def get_degrees(graph, mode="out", sort_degrees=False, norm=None, weight=None):
 
     """
     # one function for in, out and all degrees
-    use_function = {"all": graph.degree(weight=weight), "out": graph.out_degree(weight=weight),
-                    "in": graph.in_degree(weight=weight)}
+    use_function = {
+        "all": graph.degree(weight=weight),
+        "out": graph.out_degree(weight=weight),
+        "in": graph.in_degree(weight=weight),
+    }
     degrees = copy.copy(list(dict(use_function[mode]).values()))
 
     if sort_degrees:
@@ -168,7 +171,7 @@ def get_degrees(graph, mode="out", sort_degrees=False, norm=None, weight=None):
     return degrees
 
 
-def get_edge_weights(graph, sort_weights=False, norm=None, weight='weight'):
+def get_edge_weights(graph, sort_weights=False, norm=None, weight="weight"):
     """
     Returns list of edge weight
 
@@ -183,7 +186,7 @@ def get_edge_weights(graph, sort_weights=False, norm=None, weight='weight'):
     -------
 
     """
-    #todo: what should the default for "weight" be? None?
+    # todo: what should the default for "weight" be? None?
     # one function for in, out and all degrees
     edge_weights = np.array([edge[2][weight] for edge in graph.edges(data=True)])
 
@@ -220,7 +223,8 @@ def fit_degree_dist_power_law(graph, mode="in", weight=None, fit_kwargs={}):
     fit = powerlaw.Fit(degrees, discrete=True, estimate_discrete=False, **fit_kwargs)
     return fit, fit.alpha, fit.xmin
 
-def fit_edge_weight_dist_power_law(graph, weight='weight', fit_kwargs={}):
+
+def fit_edge_weight_dist_power_law(graph, weight="weight", fit_kwargs={}):
     """
     Fit a powerlaw to the edge weight distribution of an activity graph
 
@@ -257,7 +261,6 @@ def func_truncated_powerlaw(x, beta, xo, cutoff):
 
 
 def fit_function_on_node_degrees(item_list, fun, maxfev=3000, bounds=(0, 5), norm=True):
-
     if len(item_list) == 0 or np.sum(item_list) == 0:
         return 0
 

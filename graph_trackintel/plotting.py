@@ -50,7 +50,6 @@ def draw_smopy_basemap(G, figsize=(8, 6), zoom=10, ax=None):
 
             break
         except IncompleteRead as e:
-
             attempts += 1
             if attempts == 3:
                 print(G.graph["user_id"], e)

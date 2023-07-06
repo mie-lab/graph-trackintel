@@ -101,7 +101,6 @@ class ActivityGraph:
         )
 
     def check_add_location_id_to_trips(self, trips, staypoints=None):
-
         if not all(x in trips.columns for x in ["origin_location_id", "destination_location_id"]):
             assert staypoints is not None, (
                 "trips require columns ['origin_location_id', "
@@ -265,7 +264,9 @@ class ActivityGraph:
 
     def get_k_importance_nodes(self, k):
         node_in_degree = np.asarray([(n, self.G.in_degree(n)) for n in self.G.nodes])
-        best_ixs = np.argsort(node_in_degree[:, 1],)[
+        best_ixs = np.argsort(
+            node_in_degree[:, 1],
+        )[
             ::-1
         ][:k]
         # we readdress the first column of node_in_degree with best_ixs in case that node degree are not
@@ -374,7 +375,7 @@ class ActivityGraph:
         width=None,
         iterations=50,
         spring_k=None,
-        draw_kwargs={}
+        draw_kwargs={},
     ):
         """
 
@@ -446,11 +447,10 @@ class ActivityGraph:
                 node_size=node_sizes,
                 pos=nx_coordinate_layout_smopy(G, smap),
                 # connectionstyle="arc3, rad = 0.1",
-                **draw_kwargs
+                **draw_kwargs,
             )
 
         elif layout == "spring":
-
             # draw spring layout
             if ax is None:
                 plt.figure()
