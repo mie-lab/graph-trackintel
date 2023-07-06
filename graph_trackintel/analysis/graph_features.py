@@ -183,6 +183,7 @@ def get_edge_weights(graph, sort_weights=False, norm=None, weight='weight'):
     -------
 
     """
+    #todo: what should the default for "weight" be? None?
     # one function for in, out and all degrees
     edge_weights = np.array([edge[2][weight] for edge in graph.edges(data=True)])
 
@@ -197,7 +198,7 @@ def get_edge_weights(graph, sort_weights=False, norm=None, weight='weight'):
     return edge_weights
 
 
-def fit_degree_dist_power_law(graph, mode="in", fit_kwargs={}):
+def fit_degree_dist_power_law(graph, mode="in", weight=None, fit_kwargs={}):
     """
     Fit a powerlaw to the degree distribution of an activity graph
 
@@ -214,7 +215,7 @@ def fit_degree_dist_power_law(graph, mode="in", fit_kwargs={}):
     -------
 
     """
-    degrees = get_degrees(graph, mode=mode, sort_degrees=True, norm=False)
+    degrees = get_degrees(graph, mode=mode, sort_degrees=True, norm=False, weight=weight)
     degrees = _cut_off_zeros_from_sorted_list(degrees)
     fit = powerlaw.Fit(degrees, discrete=True, estimate_discrete=False, **fit_kwargs)
     return fit, fit.alpha, fit.xmin
@@ -237,6 +238,8 @@ def fit_edge_weight_dist_power_law(graph, weight='weight', fit_kwargs={}):
 
     """
     edge_weights = get_edge_weights(graph, sort_weights=True, norm=False, weight=weight)
+    if len(edge_weights) == 0:
+        return np.nan, np.nan, np.nan
     edge_weights = _cut_off_zeros_from_sorted_list(edge_weights)
     fit = powerlaw.Fit(edge_weights, discrete=True, **fit_kwargs)
 
