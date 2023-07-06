@@ -363,12 +363,18 @@ class ActivityGraph:
         layout="spring",
         edge_attributes=None,
         filter_node_importance=None,
-        filter_extent=True,
+        filter_extent=False,
         filter_dist=100,
         dist_spring_layout=10,
         draw_edge_label=False,
         draw_edge_label_type="transition_counts",
         close_figure=True,
+        ax=None,
+        node_size_scale=1,
+        width=None,
+        iterations=50,
+        spring_k=None,
+        draw_kwargs={}
     ):
         """
 
@@ -408,6 +414,10 @@ class ActivityGraph:
 
         G = self.G.subgraph(important_nodes)
 
+        # get largest connected component
+        largest_cc = max(nx.weakly_connected_components(G), key=len)
+        G = G.subgraph(largest_cc)
+
         # edge color management
         if edge_attributes is not None:
             for edge_attribute in edge_attributes:
@@ -416,14 +426,16 @@ class ActivityGraph:
             # list(self.G[u][v])[0] is the edge_attribute key (e.g., 'transition_counts' of the edge
             weights = [G[u][v][list(G[u][v])[0]]["weight"] + 1 for u, v in G.edges()]
 
-        norm_width = np.log(weights) * 2
+        if width is None:
+            norm_width = np.log(weights) * 2
+            width = norm_width
 
         deg = nx.degree(G)
-        node_sizes = [10 * deg[iata] for iata in G.nodes]
+        node_sizes = [10 * deg[iata] * node_size_scale for iata in G.nodes]
 
         if layout == "coordinate":
             # draw geographic representation
-            ax, smap = draw_smopy_basemap(G)
+            ax, smap = draw_smopy_basemap(G, ax=ax)
             nx.draw_networkx(
                 G,
                 ax=ax,
@@ -434,19 +446,27 @@ class ActivityGraph:
                 node_size=node_sizes,
                 pos=nx_coordinate_layout_smopy(G, smap),
                 # connectionstyle="arc3, rad = 0.1",
+                **draw_kwargs
             )
 
         elif layout == "spring":
 
             # draw spring layout
-            plt.figure()
-            pos = nx.spring_layout(G, k=dist_spring_layout / np.sqrt(len(G)))
+            if ax is None:
+                plt.figure()
+
+            if spring_k is None:
+                dist_spring_layout / np.sqrt(len(G))
+
+            pos = nx.spring_layout(G, k=spring_k, iterations=iterations)
             nx.draw(
                 G,
                 pos=pos,
-                width=norm_width / 2,
+                width=width,
                 node_size=node_sizes,
                 connectionstyle="arc3, rad = 0.2",
+                ax=ax,
+                **draw_kwargs,
             )
 
         if draw_edge_label:
